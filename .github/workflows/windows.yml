@@ -1,10 +1,9 @@
 name: Windows installer
 
+# Manual only (Actions ▸ Windows installer ▸ Run workflow): builds use Actions minutes. Everyday
+# builds run on your own PC with "Build PDF Editor.bat".
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths-ignore: ["**.md", "docs/**"]
 
 permissions:
   contents: read
