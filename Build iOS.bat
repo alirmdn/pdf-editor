@@ -1,7 +1,10 @@
 @echo off
-rem Build PDF Editor for iPhone and install it with xtool (runs ios/build-ios.sh inside WSL).
-rem Run it as  "Build iOS.bat" --ipa  to only produce a .ipa file.
-cd /d "%~dp0"
-wsl --cd "%~dp0." bash ios/build-ios.sh %*
+title PDF Editor for iPhone
+rem Builds the engine and the app in WSL and installs it on the connected iPhone with xtool.
+rem Other modes:  "Build iOS.bat" build   (compile only)   ipa   engine   xcode
+rem Log: ios\build-ios.log  (send it to Claude if something fails)
+set MODE=%1
+if "%MODE%"=="" set MODE=dev
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ios\build-ios.ps1" %MODE%
 echo.
 pause

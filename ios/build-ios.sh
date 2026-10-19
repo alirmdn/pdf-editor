@@ -3,7 +3,8 @@
 # xtool lives; "Build iOS.bat" in the project folder starts it for you.
 #
 #   ios/build-ios.sh            build the engine and the app, then install on the connected iPhone
-#   ios/build-ios.sh --ipa      build a signed-for-testing .ipa in ios/ instead of installing
+#   ios/build-ios.sh --ipa      build a signed .ipa in ios/ instead of installing
+#   ios/build-ios.sh --build    compile only (no iPhone needed): the first thing to try
 #   ios/build-ios.sh --engine   only rebuild the Rust engine
 #
 # Build files go to ~/.cache/pdf-editor (inside WSL, fast), never to the OneDrive folder.
@@ -22,6 +23,9 @@ die() { printf '\nerror: %s\n' "$*" >&2; exit 1; }
 mkdir -p "$CACHE"
 
 step "Checking tools"
+# xtool and Swift come from swiftly, as for The Auditor.
+# shellcheck disable=SC1091
+[ -f "$HOME/.local/share/swiftly/env.sh" ] && . "$HOME/.local/share/swiftly/env.sh"
 if ! command -v cargo >/dev/null; then
   [ -x "$HOME/.cargo/bin/cargo" ] || { echo "Installing Rust (rustup)…"; curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal; }
   # shellcheck disable=SC1091
@@ -31,6 +35,7 @@ rustup target add "$TARGET" >/dev/null
 command -v git >/dev/null || die "git is missing: sudo apt install git"
 if [ "$MODE" != "--engine" ]; then
   command -v xtool >/dev/null || die "xtool was not found in WSL. Install it (https://xtool.sh) and run 'xtool setup' once, then try again."
+  command -v rsync >/dev/null || die "rsync is missing: sudo apt-get install rsync"
 fi
 
 step "Fonts for Arabic and Japanese text (craft-fonts, pinned)"
@@ -52,24 +57,39 @@ step "Text recognition models (OCR: English and Arabic)"
 (cd "$ROOT" && CARGO_TARGET_DIR="$CACHE/host" cargo run -q -p xtask -- models "$HERE/Resources/Models")
 [ "$MODE" = "--engine" ] && { echo "Engine ready."; exit 0; }
 
-# xtool builds in a copy inside WSL: much faster than OneDrive, and its build files stay out of it.
-APP="$CACHE/ios-app"
+# xtool builds in a copy inside WSL (~/PDFEditor): much faster than OneDrive, and its build
+# files stay out of it. Same layout as The Auditor's scripts/wsl.sh.
+APP="${PDF_EDITOR_APP:-$HOME/PDFEditor}"
 mkdir -p "$APP"
-if command -v rsync >/dev/null; then
-  rsync -a --delete --exclude .build --exclude xtool "$HERE/" "$APP/"
-else
-  find "$APP" -mindepth 1 -maxdepth 1 ! -name .build ! -name xtool -exec rm -rf {} +
-  tar -C "$HERE" --exclude .build --exclude xtool -cf - . | tar -C "$APP" -xf -
-fi
+rsync -a --delete --exclude .build --exclude "xtool/" --exclude "*.log" "$HERE/" "$APP/"
 cd "$APP"
-if [ "$MODE" = "--ipa" ]; then
-  step "Building PDFEditor.ipa"
-  xtool dev build --ipa
-  ipa="$(ls -t "$APP"/xtool/*.ipa 2>/dev/null | head -1 || true)"
-  [ -n "$ipa" ] || die "xtool did not produce an .ipa (see the messages above)"
-  cp "$ipa" "$HERE/"
-  echo "Done: ios/$(basename "$ipa")"
-else
-  step "Building, signing and installing on your iPhone (keep it connected and unlocked)"
-  xtool dev
+
+# Reach the iPhone through Apple's Windows service when WSL has no local usbmuxd (set up by
+# The Auditor's scripts/4b-relay-iphone.bat).
+if [ -z "${USBMUXD_SOCKET_ADDRESS:-}" ] && [ ! -S /var/run/usbmuxd ]; then
+  export USBMUXD_SOCKET_ADDRESS="$(ip route list default | awk '{print $3}'):27015"
+  echo "Using iPhone relay at $USBMUXD_SOCKET_ADDRESS"
 fi
+
+case "$MODE" in
+  --ipa)
+    step "Building a signed PDFEditor.ipa"
+    xtool dev build -c release --sign --ipa
+    ipa="$(ls -t "$APP"/xtool/*.ipa 2>/dev/null | head -1 || true)"
+    [ -n "$ipa" ] || die "xtool did not produce an .ipa (see the messages above)"
+    cp "$ipa" "$HERE/"
+    echo "Done: ios/$(basename "$ipa")"
+    ;;
+  --build)
+    step "Compiling the app (no iPhone needed)"
+    xtool dev build
+    ;;
+  --xcode)
+    step "Generating an Xcode project (for an App Store build on a Mac)"
+    xtool dev generate-xcode-project
+    ;;
+  *)
+    step "Building, signing and installing on your iPhone (keep it connected and unlocked)"
+    xtool dev
+    ;;
+esac

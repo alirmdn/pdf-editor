@@ -19,3 +19,4 @@ plan/
 /ios/.build/
 /ios/xtool/
 /ios/*.ipa
+/ios/*.log

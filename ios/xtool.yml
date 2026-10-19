@@ -5,3 +5,4 @@ infoPath: Info.plist
 iconPath: Resources/AppIcon.png
 resources:
   - Resources/Models
+  - Resources/PrivacyInfo.xcprivacy
