@@ -79,6 +79,23 @@ fn run_gap(prev: &TextLine, line: &TextLine) -> f64 {
     if forward < -prev.size.min(line.size) * 0.2 && (right_to_left(prev) || right_to_left(line)) { p[0] - l[2] } else { forward }
 }
 
+fn on_one_baseline(a: &TextLine, b: &TextLine) -> bool {
+    (a.frame_origin().1 - b.frame_origin().1).abs() < a.size.min(b.size) * 0.2
+}
+
+/// Two OCR words boxed on one scanned line. The text layer sizes each word to its own glyphs,
+/// so a number (no descender) sits on a different baseline from the Arabic words around it; the
+/// boxes, which the reader gave the line's height, still cover each other.
+fn same_ocr_line(a: &TextLine, b: &TextLine) -> bool {
+    if !(invisible(a) && invisible(b)) {
+        return false;
+    }
+    let (ra, rb) = (a.frame_rect(), b.frame_rect());
+    let (ha, hb) = (ra[3] - ra[1], rb[3] - rb[1]);
+    let overlap = ra[3].min(rb[3]) - ra[1].max(rb[1]);
+    ha > 0.0 && hb > 0.0 && overlap >= ha.min(hb) * 0.7
+}
+
 /// Whether every run of `row` is invisible right-to-left text: a line of an Arabic OCR layer.
 fn ocr_rtl_row(row: &[usize], lines: &[TextLine]) -> bool {
     let mut runs = row.iter().filter_map(|i| lines.get(*i)).peekable();
@@ -92,11 +109,14 @@ fn group_layout(lines: &[TextLine], mixed: bool) -> Vec<TextBlock> {
             let gap = run_gap(prev, line);
             // OCR words (invisible text over a scan) join only across a word space: a wider gap
             // is a table cell or a tab stop, which a rewrite would close up.
-            let scanned = !mixed || (invisible(prev) == invisible(line) && (!invisible(line) || gap < prev.size.max(line.size) * 0.6));
+            // Arabic OCR words may sit wider apart (a number or a name the reader boxed on its
+            // own), so they join across a little more than a word space.
+            let word_space = if right_to_left(prev) || right_to_left(line) { 1.3 } else { 0.6 };
+            let scanned = !mixed || (invisible(prev) == invisible(line) && (!invisible(line) || gap < prev.size.max(line.size) * word_space));
             scanned
                 && (mixed || same_style(prev, line))
                 && same_plane(prev, line)
-                && (prev.frame_origin().1 - line.frame_origin().1).abs() < prev.size.min(line.size) * 0.2
+                && (on_one_baseline(prev, line) || same_ocr_line(prev, line))
                 && gap >= -prev.size.min(line.size) * 0.2
                 && gap < prev.size.max(line.size) * 1.5
                 // Separate same-style text objects that merely touch or overlap, with no space
@@ -165,7 +185,8 @@ fn group_layout(lines: &[TextLine], mixed: bool) -> Vec<TextBlock> {
             if let Some(prev) = block.lines.last().filter(|i| row.contains(i)).and_then(|i| lines.get(*i))
                 && !row_text.ends_with(char::is_whitespace)
                 && !line.text.starts_with(char::is_whitespace)
-                && run_gap(prev, line) > line.size * 0.12
+                // Every OCR run is a word of its own, however tight the reader's boxes are.
+                && (run_gap(prev, line) > line.size * 0.12 || (invisible(prev) && invisible(line)))
             {
                 row_text.push(' ');
                 block.editor_text.push(' ');

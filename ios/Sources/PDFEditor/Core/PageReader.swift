@@ -177,7 +177,27 @@ enum PageReader {
             }
         }
         return bands.flatMap { band in
-            band.sorted { rtl ? $0.1.maxX > $1.1.maxX : $0.1.minX < $1.1.minX }.map { $0.0 }
+            joinPieces(band.sorted { rtl ? $0.1.maxX > $1.1.maxX : $0.1.minX < $1.1.minX }, rtl: rtl)
+        }
+    }
+
+    /// Vision often splits one printed line where a number or a wide space sits. Neighbouring
+    /// pieces of a band (less than a line height apart) become one line again, every word given
+    /// the line's full height so the text layer shares one baseline.
+    private static func joinPieces(_ band: [([Word], CGRect)], rtl: Bool) -> [[Word]] {
+        var out: [([Word], CGRect)] = []
+        for piece in band {
+            if let last = out.last {
+                let gap = rtl ? last.1.minX - piece.1.maxX : piece.1.minX - last.1.maxX
+                if gap < max(last.1.height, piece.1.height) * 1.2 {
+                    out[out.count - 1] = (last.0 + piece.0, last.1.union(piece.1))
+                    continue
+                }
+            }
+            out.append(piece)
+        }
+        return out.map { line in
+            line.0.map { Word(text: $0.text, rect: CGRect(x: $0.rect.minX, y: line.1.minY, width: $0.rect.width, height: line.1.height)) }
         }
     }
 }

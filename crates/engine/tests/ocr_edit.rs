@@ -230,6 +230,20 @@ fn arabic_ocr_lines_group_into_one_paragraph() {
     assert!(text.contains("مرحبا") && !text.contains("الجديد"), "{text}");
 }
 
+/// Tightly boxed Arabic OCR words (no gap between the boxes) still read with spaces, and a
+/// number boxed a little apart stays on its line.
+#[test]
+fn tight_arabic_ocr_words_keep_their_spaces() {
+    let (s, id) = scanned_with(vec![
+        word("في", 170.0, 190.0, 70.0),
+        word("يوم", 140.0, 170.0, 70.0),
+        word("10", 115.0, 130.0, 70.0),
+        word("من", 90.0, 108.0, 70.0),
+    ]);
+    let blocks = s.get(id).unwrap().text_blocks(0);
+    assert_eq!(blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>(), ["في يوم 10 من"], "{blocks:?}");
+}
+
 /// Latin OCR lines still stay apart (a form's lines must not rewrap together).
 #[test]
 fn latin_ocr_lines_stay_apart() {
