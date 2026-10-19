@@ -64,7 +64,9 @@ exit 0
 LD
 chmod +x "$FAKE_LD"
 export CARGO_TARGET_AARCH64_APPLE_IOS_LINKER="$FAKE_LD"
-(cd "$ROOT" && cargo build --release --locked -p pdfcraft-mobile --target "$TARGET")
+echo "    linker for $TARGET: $FAKE_LD (the app links the engine later, in xtool)"
+(cd "$ROOT" && cargo build --release --locked -p pdfcraft-mobile --target "$TARGET" \
+  --config "target.aarch64-apple-ios.linker=\"$FAKE_LD\"")
 mkdir -p "$HERE/Vendor/ios-arm64"
 cp "$CARGO_TARGET_DIR/$TARGET/release/libpdfeditor_core.a" "$HERE/Vendor/ios-arm64/"
 ls -lh "$HERE/Vendor/ios-arm64/libpdfeditor_core.a"
