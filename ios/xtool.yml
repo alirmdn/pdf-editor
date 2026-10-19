@@ -1,0 +1,7 @@
+version: 1
+bundleID: com.alirmdn.pdfeditor
+product: PDFEditor
+infoPath: Info.plist
+iconPath: Resources/AppIcon.png
+resources:
+  - Resources/Models

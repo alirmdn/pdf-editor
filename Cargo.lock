@@ -4203,6 +4203,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdfcraft-mobile"
+version = "1.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "pdfcraft-automation",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "pdfcraft-model"
 version = "1.0.0"
 dependencies = [

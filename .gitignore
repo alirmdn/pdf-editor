@@ -12,3 +12,10 @@ plan/
 /installers/
 /source/
 /pdf-editor-source.zip
+
+# iOS build outputs
+/ios/Vendor/
+/ios/Resources/Models/
+/ios/.build/
+/ios/xtool/
+/ios/*.ipa

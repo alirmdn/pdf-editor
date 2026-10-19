@@ -38,8 +38,12 @@ sha3 = "0.12.0"
 ripemd = "0.2.0"
 ed25519-dalek = "3.0.0"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# iOS uses the pure-Rust RSA path like the web build (no C/cmake cross-compile for aws-lc).
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "ios")))'.dependencies]
 aws-lc-rs = { version = "1.18", default-features = false, features = ["aws-lc-sys", "prebuilt-nasm"] }
+getrandom = "0.4"
+
+[target.'cfg(target_os = "ios")'.dependencies]
 getrandom = "0.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]

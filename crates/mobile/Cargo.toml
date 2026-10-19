@@ -1,0 +1,25 @@
+[package]
+name = "pdfcraft-mobile"
+description = "PDF Editor engine for the iOS app: a C interface over the automation tools (JSON in, JSON out)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lib]
+name = "pdfeditor_core"
+crate-type = ["staticlib", "rlib"]
+
+# The C interface needs `unsafe` (raw pointers from Swift); it is confined to src/lib.rs and every
+# block says why it holds. The rest of the workspace keeps `unsafe_code = "forbid"`.
+[lints.rust]
+unsafe_code = "allow"
+
+[dependencies]
+pdfcraft-automation = { workspace = true, default-features = false }
+serde_json = { workspace = true }
+base64 = "0.22"
+
+[dev-dependencies]
+tempfile = "3.27"

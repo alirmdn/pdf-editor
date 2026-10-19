@@ -29,3 +29,12 @@ cargo build --release -p pdfcraft
 The app is `target/release/pdfcraft.exe`. Installers are built by the `release` GitHub workflow.
 
 Support and privacy: https://aliramadann.github.io/pdf-editor-support/
+
+## iPhone and iPad
+
+`ios/` is a native SwiftUI app (PDFKit viewer, iOS text editing, document camera) over the same
+Rust engine (`crates/mobile`, a C interface to the automation tools). Double-click
+**Build iOS.bat**: inside WSL it builds the engine for iPhone, fetches the OCR models, and runs
+`xtool dev` to sign and install the app on your connected iPhone (`"Build iOS.bat" --ipa` makes a
+`.ipa` instead). Needs WSL with xtool set up (`xtool setup`, signed in with your Apple ID).
+For App Store releases the same package opens in Xcode (`xtool dev generate-xcode-project`).

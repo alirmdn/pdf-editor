@@ -1124,7 +1124,7 @@ pub fn tools() -> Vec<ToolDef> {
                     "doc": doc(),
                     "pages": pages("to recognise (default: all)"),
                     "dpi": { "type": "number", "minimum": 72, "maximum": 600, "description": "Resolution pages are read at (default 300; a scanned page is read at most at its own resolution)." },
-                    "language": { "type": "string", "enum": ["en"], "description": "Document language (default en)." },
+                    "language": { "type": "string", "enum": ["auto", "ar", "en"], "description": "Document language: auto (Arabic and English, default), ar or en." },
                     "skip_text_pages": { "type": "boolean", "description": "Leave pages that already contain text alone (default true). false also reads pictures on such pages, without adding their text again." },
                 }),
                 &["doc"],
