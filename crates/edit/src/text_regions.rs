@@ -64,11 +64,32 @@ fn same_style(a: &TextLine, b: &TextLine) -> bool {
         && (a.size - b.size).abs() < 0.01
 }
 
+/// Whether `line` has right-to-left letters (Arabic, Hebrew).
+fn right_to_left(line: &TextLine) -> bool {
+    line.text.chars().any(crate::bidi::is_rtl)
+}
+
+/// The space between two runs drawn one after the other on a row. Right-to-left text is often
+/// drawn word by word from the right (an OCR layer always is), so when `line` starts left of
+/// `prev` and either reads right to left, the gap is measured from `line`'s right edge to
+/// `prev`'s left edge.
+fn run_gap(prev: &TextLine, line: &TextLine) -> f64 {
+    let (p, l) = (prev.frame_rect(), line.frame_rect());
+    let forward = l[0] - p[2];
+    if forward < -prev.size.min(line.size) * 0.2 && (right_to_left(prev) || right_to_left(line)) { p[0] - l[2] } else { forward }
+}
+
+/// Whether every run of `row` is invisible right-to-left text: a line of an Arabic OCR layer.
+fn ocr_rtl_row(row: &[usize], lines: &[TextLine]) -> bool {
+    let mut runs = row.iter().filter_map(|i| lines.get(*i)).peekable();
+    runs.peek().is_some() && runs.all(invisible) && row.iter().filter_map(|i| lines.get(*i)).any(right_to_left)
+}
+
 fn group_layout(lines: &[TextLine], mixed: bool) -> Vec<TextBlock> {
     let mut rows: Vec<Vec<usize>> = Vec::new();
     for (i, line) in lines.iter().enumerate() {
         let joins = rows.last().and_then(|r| r.last()).and_then(|i| lines.get(*i)).is_some_and(|prev| {
-            let gap = line.frame_rect()[0] - prev.frame_rect()[2];
+            let gap = run_gap(prev, line);
             // OCR words (invisible text over a scan) join only across a word space: a wider gap
             // is a table cell or a tab stop, which a rewrite would close up.
             let scanned = !mixed || (invisible(prev) == invisible(line) && (!invisible(line) || gap < prev.size.max(line.size) * 0.6));
@@ -106,7 +127,9 @@ fn group_layout(lines: &[TextLine], mixed: bool) -> Vec<TextBlock> {
             let aligned =
                 (pr[0] - frame[0]).abs() < tol || ((pr[0] + pr[2] - frame[0] - frame[2]) / 2.0).abs() < tol || (pr[2] - frame[2]).abs() < tol;
             // OCR lines stay apart: the scan fixes where each one is, so they never rewrap together.
-            (!mixed || !(invisible(prev) || invisible(first)))
+            // Arabic OCR lines are the exception: a scanned Arabic paragraph is edited as one
+            // block and redrawn whole, shaped, over a cover (`shaped_arabic_rewrite`).
+            (!mixed || !(invisible(prev) || invisible(first)) || (ocr_rtl_row(prev_row, lines) && ocr_rtl_row(&row, lines)))
                 && (mixed || same_style(prev, first))
                 && same_plane(prev, first)
                 && aligned
@@ -142,7 +165,7 @@ fn group_layout(lines: &[TextLine], mixed: bool) -> Vec<TextBlock> {
             if let Some(prev) = block.lines.last().filter(|i| row.contains(i)).and_then(|i| lines.get(*i))
                 && !row_text.ends_with(char::is_whitespace)
                 && !line.text.starts_with(char::is_whitespace)
-                && line.frame_rect()[0] - prev.frame_rect()[2] > line.size * 0.12
+                && run_gap(prev, line) > line.size * 0.12
             {
                 row_text.push(' ');
                 block.editor_text.push(' ');

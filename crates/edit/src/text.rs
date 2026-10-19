@@ -2019,8 +2019,12 @@ pub(crate) fn rewrite_block_with_limit(
 /// the craft-fonts Arabic face, laid out by the bidirectional algorithm, right-aligned when it
 /// reads right to left, with per-line ActualText keeping copy and search in typing order.
 ///
-/// `None` (the ordinary rewrite applies) when the draft has no Arabic, the build has no Arabic
-/// face, the paragraph is turned, or the edit formats part of it or picks a document font.
+/// A scanned Arabic paragraph (several OCR lines grouped into one block) always takes this path,
+/// whatever the new text, since the ordinary rewrite never rewraps OCR lines together.
+///
+/// `None` (the ordinary rewrite applies) when the draft has no Arabic and the paragraph is not a
+/// scanned block, the build has no Arabic face for Arabic text, the paragraph is turned, or the
+/// edit formats part of it or picks a document font.
 fn shaped_arabic_rewrite(
     doc: &mut Document,
     page: usize,
@@ -2029,15 +2033,18 @@ fn shaped_arabic_rewrite(
     draft: &str,
     style: &BlockStyle,
 ) -> Result<Option<LineEdit>, EditError> {
-    if !draft.chars().any(crate::added::is_arabic)
-        || pdfcraft_fonts::document_arabic_font().is_none()
-        || !style.ranges.is_empty()
-        || style.resource.is_some()
-    {
+    if !style.ranges.is_empty() || style.resource.is_some() {
         return Ok(None);
     }
     let blocks = group_blocks(lines);
     let Some(b) = blocks.get(block).cloned() else { return Ok(None) };
+    // A scanned Arabic paragraph (several OCR lines) is always redrawn whole this way, even when
+    // the new text has no Arabic: the ordinary rewrite keeps OCR lines where the scan put them.
+    let arabic = draft.chars().any(crate::added::is_arabic);
+    let scanned_block = b.invisible && b.rows.len() > 1;
+    if !(scanned_block || arabic) || (arabic && pdfcraft_fonts::document_arabic_font().is_none()) {
+        return Ok(None);
+    }
     let members: Vec<&TextLine> = b.lines.iter().filter_map(|i| lines.get(*i)).collect();
     if members.is_empty() || !members.iter().all(|l| l.upright()) {
         return Ok(None);
@@ -2098,7 +2105,7 @@ fn shaped_arabic_rewrite(
         crate::stamp(doc, page, "PCOcrCover", cover.into_bytes())?;
     }
     crate::added::add_content(doc, page, &crate::added::Content::Text(item))?;
-    Ok(Some(LineEdit { substituted: Some("Noto Sans Arabic".into()) }))
+    Ok(Some(LineEdit { substituted: arabic.then(|| "Noto Sans Arabic".into()) }))
 }
 
 /// The inverse of an affine matrix `[a b c d e f]`, or `None` when it is singular.

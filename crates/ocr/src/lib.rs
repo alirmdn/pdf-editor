@@ -191,20 +191,26 @@ impl Ocr {
         } else {
             Vec::new()
         };
+        let rects: Vec<Option<[f32; 4]>> = lines
+            .iter()
+            .map(|line| {
+                let mut rect = [f32::INFINITY, f32::INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY];
+                for word in line {
+                    let r = word.bounding_rect();
+                    rect = [rect[0].min(r.left()), rect[1].min(r.top()), rect[2].max(r.right()), rect[3].max(r.bottom())];
+                }
+                (rect.iter().all(|v| v.is_finite()) && rect[2] > rect[0] && rect[3] > rect[1]).then_some(rect)
+            })
+            .collect();
         let mut out = Vec::new();
-        for (index, line) in lines.into_iter().enumerate() {
-            let mut rect = [f32::INFINITY, f32::INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY];
-            for word in &line {
-                let r = word.bounding_rect();
-                rect = [rect[0].min(r.left()), rect[1].min(r.top()), rect[2].max(r.right()), rect[3].max(r.bottom())];
-            }
-            if !rect.iter().all(|v| v.is_finite()) || rect[2] <= rect[0] || rect[3] <= rect[1] {
-                continue;
-            }
+        // The detector was trained on Latin text and often breaks an Arabic line into pieces; the
+        // Arabic reader reads (and the editor groups) whole lines, so the pieces are joined first.
+        for (rect, members) in arabic::join_line_pieces(&rects) {
             let text = reader.read_line(&rgb, width, height, rect)?;
             if auto && !arabic::mostly_arabic(&text) {
-                if let Some(Some(l)) = latin.get(index).cloned().filter(|l| l.as_ref().is_some_and(|l| !l.words.is_empty())) {
-                    out.push(l);
+                let read: Vec<Line> = members.iter().filter_map(|i| latin.get(*i).cloned().flatten()).filter(|l| !l.words.is_empty()).collect();
+                if !read.is_empty() {
+                    out.extend(read);
                     continue;
                 }
             }

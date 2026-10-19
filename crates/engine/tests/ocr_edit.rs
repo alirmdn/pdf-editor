@@ -207,3 +207,32 @@ fn visible_stretched_text_rewrites_unchanged() {
     let i = ((y * out.width + x) * 4) as usize;
     assert_eq!(&out.rgba[i..i + 3], &[255, 255, 255]);
 }
+
+/// A scanned Arabic paragraph: the OCR layer places each line's words from the right, in typing
+/// order. The words join into rows and the right-aligned rows into one paragraph, which edits
+/// as a whole and is redrawn over the scan.
+#[test]
+fn arabic_ocr_lines_group_into_one_paragraph() {
+    let (mut s, id) = scanned_with(vec![
+        word("مرحبا", 150.0, 190.0, 70.0),
+        word("بكم", 120.0, 146.0, 70.0),
+        word("في", 100.0, 116.0, 70.0),
+        word("التطبيق", 130.0, 190.0, 56.0),
+        word("الجديد", 80.0, 126.0, 56.0),
+    ]);
+    let blocks = s.get(id).unwrap().text_blocks(0);
+    assert_eq!(blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>(), ["مرحبا بكم في التطبيق الجديد"], "{blocks:?}");
+    assert_eq!(blocks[0].rows.len(), 2);
+    s.apply(id, Edit::EditTextBlock { page: 0, block: 0, text: "مرحبا بكم في التطبيق".into(), style: Default::default() }).unwrap();
+    let blocks = s.get(id).unwrap().text_blocks(0);
+    assert!(blocks.iter().all(|b| !b.invisible), "the old OCR lines are gone: {blocks:?}");
+    let text: String = blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>().join(" ");
+    assert!(text.contains("مرحبا") && !text.contains("الجديد"), "{text}");
+}
+
+/// Latin OCR lines still stay apart (a form's lines must not rewrap together).
+#[test]
+fn latin_ocr_lines_stay_apart() {
+    let (s, id) = scanned_with(vec![word("First", 20.0, 60.0, 70.0), word("Second", 20.0, 66.0, 56.0)]);
+    assert_eq!(s.get(id).unwrap().text_blocks(0).len(), 2);
+}

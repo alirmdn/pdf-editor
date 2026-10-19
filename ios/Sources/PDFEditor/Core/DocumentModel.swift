@@ -165,9 +165,26 @@ final class DocumentModel {
         await run("Moving page…") { try await commit(["pages": [page + 1], "to": to], tool: "page_move") }
     }
 
+    /// The result of the last "Make Scans Editable" run, shown to the user.
+    var notice: String?
+
+    /// OCR every scanned page (pages that already have real text are skipped): the words found
+    /// become invisible text over the picture, so the page can be searched, selected and edited.
     func recognizeAll() async {
-        await run("Recognizing text…") {
-            try await commit(["language": "auto"], tool: "ocr_recognize")
+        guard let doc = docID else { return }
+        await run("Reading the scanned pages…") {
+            let out = try await Engine.shared.first("ocr_recognize", ["doc": doc, "language": "auto"])
+            let words = out["words"] as? Int ?? 0
+            let pages = (out["pages"] as? [[String: Any]] ?? []).filter { $0["skipped"] == nil && ($0["words"] as? Int ?? 0) > 0 }.count
+            if words > 0 {
+                _ = try await Engine.shared.first("doc_save", ["doc": doc])
+                try await refreshState()
+                reload()
+                recognized.formUnion(0..<pageCount)
+                notice = "Found \(words) words on \(pages) page\(pages == 1 ? "" : "s"). You can now search them, and edit them with Edit Text."
+            } else {
+                notice = "No scanned pages needed reading: this PDF's text is already searchable and editable."
+            }
         }
     }
 

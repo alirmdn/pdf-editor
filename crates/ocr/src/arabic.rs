@@ -170,7 +170,10 @@ fn line_tensor(rgb: &[u8], width: u32, height: u32, crop: [f32; 4]) -> Option<Nd
 /// Whether at least half the letters of `text` are Arabic script.
 pub fn mostly_arabic(text: &str) -> bool {
     let letters = text.chars().filter(|c| c.is_alphabetic()).count();
-    let arabic = text.chars().filter(|c| matches!(u32::from(*c), 0x0600..=0x06FF | 0x0750..=0x077F | 0x08A0..=0x08FF | 0xFB50..=0xFDFF | 0xFE70..=0xFEFF)).count();
+    let arabic = text
+        .chars()
+        .filter(|c| matches!(u32::from(*c), 0x0600..=0x06FF | 0x0750..=0x077F | 0x08A0..=0x08FF | 0xFB50..=0xFDFF | 0xFE70..=0xFEFF))
+        .count();
     letters > 0 && arabic * 2 >= letters
 }
 
@@ -194,9 +197,69 @@ pub fn words_in_line(text: &str, rect: [f32; 4]) -> Line {
     Line { words: out }
 }
 
+/// Join pieces of one text line (`[left, top, right, bottom]` boxes; `None` is skipped) into
+/// whole lines: pieces of a similar height that share most of their height and sit less than a
+/// line height apart. Returns each line's box and the indexes of its pieces, top to bottom.
+/// Pieces farther apart (another column, a table cell) stay separate lines.
+pub fn join_line_pieces(pieces: &[Option<[f32; 4]>]) -> Vec<([f32; 4], Vec<usize>)> {
+    let mut lines: Vec<([f32; 4], Vec<usize>)> = pieces.iter().enumerate().filter_map(|(i, r)| r.map(|r| (r, vec![i]))).collect();
+    let height = |r: &[f32; 4]| (r[3] - r[1]).max(0.0);
+    let same_line = |a: &[f32; 4], b: &[f32; 4]| {
+        let (ha, hb) = (height(a), height(b));
+        let (lo, hi) = (ha.min(hb), ha.max(hb));
+        let overlap = (a[3].min(b[3]) - a[1].max(b[1])).max(0.0);
+        let gap = (b[0] - a[2]).max(a[0] - b[2]);
+        lo > 0.0 && lo >= hi * 0.5 && overlap >= lo * 0.6 && gap < hi
+    };
+    // Each pass joins at least one pair, so this ends within `lines.len()` passes.
+    loop {
+        let mut joined = false;
+        'scan: for i in 0..lines.len() {
+            for j in i + 1..lines.len() {
+                let (Some(a), Some(b)) = (lines.get(i), lines.get(j)) else { continue };
+                if same_line(&a.0, &b.0) {
+                    let (rb, mb) = lines.swap_remove(j);
+                    if let Some(a) = lines.get_mut(i) {
+                        a.0 = [a.0[0].min(rb[0]), a.0[1].min(rb[1]), a.0[2].max(rb[2]), a.0[3].max(rb[3])];
+                        a.1.extend(mb);
+                        a.1.sort_unstable();
+                    }
+                    joined = true;
+                    break 'scan;
+                }
+            }
+        }
+        if !joined {
+            break;
+        }
+    }
+    lines.sort_by(|a, b| a.0[1].total_cmp(&b.0[1]).then(b.0[2].total_cmp(&a.0[2])));
+    lines
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pieces_of_one_line_join_and_columns_stay_apart() {
+        let pieces = [
+            Some([300.0, 10.0, 400.0, 30.0]),
+            Some([180.0, 12.0, 290.0, 31.0]),
+            None,
+            Some([180.0, 50.0, 400.0, 70.0]),
+            // Another column, far to the left of the first line.
+            Some([0.0, 10.0, 100.0, 30.0]),
+        ];
+        let lines = join_line_pieces(&pieces);
+        assert_eq!(lines.len(), 3, "{lines:?}");
+        let first = lines.iter().find(|l| l.1 == vec![0, 1]).expect("the two pieces join");
+        assert_eq!(first.0, [180.0, 10.0, 400.0, 31.0]);
+        assert!(lines.iter().any(|l| l.1 == vec![4]));
+        assert!(lines.iter().any(|l| l.1 == vec![3]));
+        assert!(join_line_pieces(&[]).is_empty());
+        assert!(join_line_pieces(&[Some([5.0, 5.0, 5.0, 5.0])]).len() == 1);
+    }
 
     #[test]
     fn drawing_order_becomes_typing_order_and_numbers_keep_theirs() {

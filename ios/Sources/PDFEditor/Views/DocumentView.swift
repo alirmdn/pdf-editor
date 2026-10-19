@@ -16,6 +16,7 @@ struct DocumentView: View {
     @State private var searching = false
     @State private var query = ""
     @State private var searchToken = 0
+    @State private var confirmingScan = false
 
     var body: some View {
         PDFKitView(
@@ -52,6 +53,17 @@ struct DocumentView: View {
         } message: {
             Text(model.errorMessage ?? "")
         }
+        .confirmationDialog("Make Scans Editable", isPresented: $confirmingScan, titleVisibility: .visible) {
+            Button("Read All Scanned Pages") { Task { await model.recognizeAll() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Scanned pages and photos are just pictures of text. This reads the words in them (Arabic and English) so you can search, copy and edit them. Pages that already have real text are left as they are. Edit Text also does this by itself for the page you are on.")
+        }
+        .alert("Make Scans Editable", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.notice ?? "")
+        }
         .task { await model.open() }
         .task(id: TaskKey(page: model.currentPage, tool: tool, revision: model.revision)) {
             if tool == .editText { await model.loadParagraphs(page: model.currentPage) }
@@ -84,7 +96,7 @@ struct DocumentView: View {
             barButton("Search", "magnifyingglass", selected: searching) { searching.toggle() }
             barButton("Pages", "square.grid.2x2", selected: false) { showingPages = true }
                 .disabled(!model.editable)
-            barButton("Recognize", "text.viewfinder", selected: false) { Task { await model.recognizeAll() } }
+            barButton("Scans", "text.viewfinder", selected: false) { confirmingScan = true }
                 .disabled(!model.editable)
             Text("\(model.currentPage + 1) / \(model.pageCount)")
                 .font(.caption.monospacedDigit())
