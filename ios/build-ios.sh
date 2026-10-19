@@ -49,6 +49,21 @@ git -C "$CACHE/craft-fonts" checkout -q "$FONTS_REF"
 step "Building the PDF engine for iPhone (first time: 10-30 minutes)"
 export CRAFT_FONTS_DIR="$CACHE/craft-fonts" CRAFT_FONTS_REQUIRED=1
 export CARGO_TARGET_DIR="$CACHE/target" IPHONEOS_DEPLOYMENT_TARGET=17.0
+# The engine is a static library: nothing is linked for iPhone here (xtool links the app).
+# A few dependencies (rten, boa_engine) also ask for a dynamic library of themselves, which
+# needs Apple's linker; nothing uses those, so a stand-in "linker" just writes an empty file.
+FAKE_LD="$CACHE/ios-no-link.sh"
+cat > "$FAKE_LD" <<'LD'
+#!/bin/sh
+# Stand-in linker for iOS dynamic libraries nobody uses: create the output file and succeed.
+while [ $# -gt 0 ]; do
+  if [ "$1" = "-o" ]; then shift; : > "$1"; fi
+  shift
+done
+exit 0
+LD
+chmod +x "$FAKE_LD"
+export CARGO_TARGET_AARCH64_APPLE_IOS_LINKER="$FAKE_LD"
 (cd "$ROOT" && cargo build --release --locked -p pdfcraft-mobile --target "$TARGET")
 mkdir -p "$HERE/Vendor/ios-arm64"
 cp "$CARGO_TARGET_DIR/$TARGET/release/libpdfeditor_core.a" "$HERE/Vendor/ios-arm64/"
