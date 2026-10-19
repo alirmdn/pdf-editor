@@ -33,6 +33,7 @@ if ! command -v cargo >/dev/null; then
 fi
 rustup target add "$TARGET" >/dev/null
 command -v git >/dev/null || die "git is missing: sudo apt install git"
+command -v cc >/dev/null || die "no C compiler in WSL (needed by Rust build scripts): sudo apt-get install build-essential"
 if [ "$MODE" != "--engine" ]; then
   command -v xtool >/dev/null || die "xtool was not found in WSL. Install it (https://xtool.sh) and run 'xtool setup' once, then try again."
   command -v rsync >/dev/null || die "rsync is missing: sudo apt-get install rsync"
