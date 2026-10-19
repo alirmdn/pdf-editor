@@ -4777,7 +4777,8 @@ fn ocr_tools_make_a_scan_searchable() {
     let dir = workdir("ocr");
     let mut a = auto(&dir);
     let status = ok(&mut a, "ocr_status", json!({}));
-    assert_eq!(status["languages"][0]["code"], "en");
+    let codes: Vec<&str> = status["languages"].as_array().unwrap().iter().filter_map(|l| l["code"].as_str()).collect();
+    assert_eq!(codes, ["auto", "ar", "en"]);
     if status["available"] != true {
         eprintln!("skipped: OCR models not installed");
         return;
@@ -6494,4 +6495,30 @@ fn a_root_less_write_output_is_atomic_too() {
     let e = free.write_output(&dir.join("new").to_string_lossy(), &[4]).unwrap_err();
     assert!(matches!(&e, ToolError::Failed(m) if m.contains("is a folder")), "{e:?}");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Words read by the platform's OCR (Apple Vision on iPhone) become the page's text layer: an
+/// Arabic paragraph given line by line, words from the right, is one editable paragraph.
+#[test]
+fn ocr_add_words_builds_an_editable_text_layer() {
+    let dir = workdir("ocr-add-words");
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_create", json!({ "from": "blank", "width": 300, "height": 400 }))["doc"].as_u64().unwrap();
+    let words = json!([
+        { "text": "مرحبا", "rect": [240, 40, 280, 52] },
+        { "text": "بكم", "rect": [210, 40, 236, 52] },
+        { "text": "التطبيق", "rect": [220, 56, 280, 68] },
+        { "text": "الجديد", "rect": [170, 56, 216, 68] },
+        { "text": "", "rect": [0, 0, 10, 10] },
+        { "text": "bad", "rect": [5, 5, 5, 5] },
+    ]);
+    let out = ok(&mut a, "ocr_add_words", json!({ "doc": doc, "page": 1, "words": words }));
+    assert_eq!(out["words"], 4, "empty and degenerate words are skipped: {out}");
+    let paras = ok(&mut a, "text_paragraphs", json!({ "doc": doc, "page": 1 }));
+    assert_eq!(paras["count"], 1, "{paras}");
+    assert_eq!(paras["paragraphs"][0]["text"], "مرحبا بكم التطبيق الجديد");
+    let r = paras["paragraphs"][0]["rect"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect::<Vec<_>>();
+    assert!((r[2] - 280.0).abs() < 2.0 && (r[1] - 40.0).abs() < 4.0, "the box is where the words were: {r:?}");
+    assert!(a.call("ocr_add_words", &json!({ "doc": doc, "page": 1, "words": [{ "text": "x" }] })).is_err());
+    assert!(a.call("ocr_add_words", &json!({ "doc": doc, "page": 2, "words": [] })).is_err());
 }

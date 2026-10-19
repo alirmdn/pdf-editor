@@ -638,6 +638,44 @@ impl Automation {
         Ok(json!({ "words": found.iter().map(|p| p.words.len()).sum::<usize>(), "pages": list }))
     }
 
+    /// Add words recognised outside the engine (the platform's own OCR, such as Apple's Vision
+    /// on iPhone) as the page's invisible text layer, exactly as ocr_recognize would.
+    pub(crate) fn ocr_add_words(&mut self, a: &Args) -> Result<Value> {
+        const MAX_WORDS: usize = 20_000;
+        let page = self.page(a)?;
+        let list = a.get("words").and_then(Value::as_array).ok_or_else(|| ToolError::InvalidArgs("words must be an array".into()))?;
+        if list.len() > MAX_WORDS {
+            return Err(ToolError::InvalidArgs(format!("at most {MAX_WORDS} words at a time")));
+        }
+        let info = self.doc(a)?.info.pages.get(page).cloned().ok_or_else(|| ToolError::InvalidArgs("no such page".into()))?;
+        let mut words = Vec::with_capacity(list.len());
+        for w in list {
+            let text = w.get("text").and_then(Value::as_str).map(str::trim).unwrap_or("");
+            let rect: Vec<f64> = w.get("rect").and_then(Value::as_array).map(|r| r.iter().filter_map(Value::as_f64).collect()).unwrap_or_default();
+            let [x0, y0, x1, y1] = rect.as_slice() else {
+                return Err(ToolError::InvalidArgs("each word needs text and rect [left, top, right, bottom]".into()));
+            };
+            let (l, r, t, b) = (x0.min(*x1), x0.max(*x1), y0.min(*y1), y0.max(*y1));
+            // Empty text, degenerate or absurd boxes are skipped, never drawn.
+            if text.is_empty() || text.len() > 4_000 || ![l, r, t, b].iter().all(|v| v.is_finite() && v.abs() < 1e6) || r - l < 0.01 || b - t < 0.01 {
+                continue;
+            }
+            let word = pdfcraft_engine::ocr::Word { text: text.to_owned(), rect: [l as f32, t as f32, r as f32, b as f32] };
+            words.push(pdfcraft_engine::ocr::PlacedWord::place(&word, |x, y| {
+                let [u, v] = info.view_to_user(x, y);
+                [u as f64, v as f64]
+            }));
+        }
+        let count = words.len();
+        if count == 0 {
+            return Ok(json!({ "page": page + 1, "words": 0 }));
+        }
+        let mut out = self.apply(a, pdfcraft_engine::Edit::AddOcrText { page, words })?;
+        out["page"] = json!(page + 1);
+        out["words"] = json!(count);
+        Ok(out)
+    }
+
     pub(crate) fn ocr_status(&self) -> Result<Value> {
         use pdfcraft_engine::ocr;
         let dirs: Vec<String> = ocr::Models::search_dirs().iter().map(|d| d.to_string_lossy().into_owned()).collect();

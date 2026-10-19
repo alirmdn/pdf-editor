@@ -1129,6 +1129,15 @@ pub fn tools() -> Vec<ToolDef> {
                 }),
                 &["doc"],
             )),
+        t("ocr_add_words", "Add recognised words", "Scan & OCR: add words that another recogniser read (for example the operating system's own OCR) as invisible text over the page image, as ocr_recognize does, so the page becomes searchable, selectable and editable. Each word has text and rect [left, top, right, bottom] in the displayed page's points, origin at the top-left (the space text_paragraphs reports). Words are given in reading order; right-to-left lines go word by word from the right. Undoable.")
+            .with(schema(
+                json!({
+                    "doc": doc(),
+                    "page": { "type": "integer", "minimum": 1, "description": "Page number (1-based)." },
+                    "words": { "type": "array", "maxItems": 20000, "items": { "type": "object", "properties": { "text": { "type": "string" }, "rect": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 } }, "required": ["text", "rect"] } },
+                }),
+                &["doc", "page", "words"],
+            )),
         t("ocr_recognize_files", "Recognize text in multiple files", "Scan & OCR ▸ Recognize text ▸ In multiple files: read every page of each PDF in paths and write the searchable result into folder under the same name (pages that already have text are left alone unless skip_text_pages is false, as in ocr_recognize). Returns, per file, the output path, word count and skipped pages, or the error.")
             .cmd("ocr.recognize_batch")
             .with(schema(

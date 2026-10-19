@@ -108,9 +108,9 @@ final class DocumentModel {
                 recognized.insert(page)
                 busy = "Recognizing text on this scanned page…"
                 defer { busy = nil }
-                let result = try? await Engine.shared.call("ocr_recognize", ["doc": doc, "pages": [page + 1], "language": "auto"])
-                if result != nil {
+                if (try? await readScan(page: page, doc: doc)) ?? 0 > 0 {
                     _ = try await Engine.shared.first("doc_save", ["doc": doc])
+                    try await refreshState()
                     reload()
                     found = try await fetchParagraphs(doc: doc, page: page)
                 }
@@ -168,14 +168,35 @@ final class DocumentModel {
     /// The result of the last "Make Scans Editable" run, shown to the user.
     var notice: String?
 
+    /// Read one scanned page and add its words as the page's text layer. Apple's Vision reads it
+    /// when this iPhone has Arabic (iOS 18 and later); otherwise the engine's own recogniser.
+    /// Returns the number of words added.
+    private func readScan(page: Int, doc: Int) async throws -> Int {
+        if PageReader.available, let pdfPage = pdf?.page(at: page) {
+            let words = try await PageReader.read(pdfPage)
+            guard !words.isEmpty else { return 0 }
+            let out = try await Engine.shared.first("ocr_add_words", ["doc": doc, "page": page + 1, "words": words.map(\.json)])
+            return out["words"] as? Int ?? words.count
+        }
+        let out = try await Engine.shared.first("ocr_recognize", ["doc": doc, "pages": [page + 1], "language": "auto"])
+        return out["words"] as? Int ?? 0
+    }
+
     /// OCR every scanned page (pages that already have real text are skipped): the words found
     /// become invisible text over the picture, so the page can be searched, selected and edited.
     func recognizeAll() async {
         guard let doc = docID else { return }
         await run("Reading the scanned pages…") {
-            let out = try await Engine.shared.first("ocr_recognize", ["doc": doc, "language": "auto"])
-            let words = out["words"] as? Int ?? 0
-            let pages = (out["pages"] as? [[String: Any]] ?? []).filter { $0["skipped"] == nil && ($0["words"] as? Int ?? 0) > 0 }.count
+            var words = 0, pages = 0
+            for page in 0..<pageCount {
+                // A page that already has text (real text or an earlier reading) is left alone.
+                let existing = pdf?.page(at: page)?.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard existing.isEmpty else { continue }
+                busy = pageCount > 1 ? "Reading page \(page + 1) of \(pageCount)…" : "Reading the scanned page…"
+                let found = try await readScan(page: page, doc: doc)
+                words += found
+                if found > 0 { pages += 1 }
+            }
             if words > 0 {
                 _ = try await Engine.shared.first("doc_save", ["doc": doc])
                 try await refreshState()
