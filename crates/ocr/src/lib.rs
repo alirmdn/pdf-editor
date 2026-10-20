@@ -111,6 +111,7 @@ impl Line {
 }
 
 pub mod arabic;
+pub mod windows_ocr;
 
 /// A loaded recogniser. Loading takes a moment; keep one and reuse it.
 pub struct Ocr {
@@ -140,6 +141,10 @@ impl Ocr {
 
     /// Whether `language` (a [`LANGUAGES`] code) can be read with the installed models.
     pub fn reads(&self, language: &str) -> bool {
+        #[cfg(windows)]
+        if windows_ocr::reads(language) {
+            return true;
+        }
         match language {
             "ar" | "auto" => self.arabic.is_some(),
             _ => true,
@@ -148,7 +153,14 @@ impl Ocr {
 
     /// [`Ocr::recognize`] in `language` (a [`LANGUAGES`] code). Arabic lines are found by the
     /// detector and read by the Arabic recogniser, in typing order.
+    ///
+    /// On Windows, Windows' own recogniser reads the page when the language's OCR feature is
+    /// installed ([`windows_ocr`]): it finds whole lines and boxes each word where it is drawn.
     pub fn recognize_in(&self, pixels: &[u8], width: u32, height: u32, language: &str) -> Result<Vec<Line>, OcrError> {
+        #[cfg(windows)]
+        if let Some(lines) = windows_ocr::recognize(pixels, width, height, language) {
+            return Ok(lines);
+        }
         let Some(reader) = self.arabic.as_ref().filter(|_| matches!(language, "ar" | "auto")) else {
             return self.recognize(pixels, width, height);
         };
@@ -206,20 +218,19 @@ impl Ocr {
         // The detector was trained on Latin text and often breaks an Arabic line into pieces; the
         // Arabic reader reads (and the editor groups) whole lines, so the pieces are joined first.
         for (rect, members) in arabic::join_line_pieces(&rects) {
-            let text = reader.read_line(&rgb, width, height, rect)?;
-            if auto && !arabic::mostly_arabic(&text) {
+            let read = reader.read(&rgb, width, height, rect)?;
+            if auto && !arabic::mostly_arabic(&read.text()) {
                 let read: Vec<Line> = members.iter().filter_map(|i| latin.get(*i).cloned().flatten()).filter(|l| !l.words.is_empty()).collect();
                 if !read.is_empty() {
                     out.extend(read);
                     continue;
                 }
             }
-            let words = arabic::words_in_line(&text, rect);
-            if !words.words.is_empty() {
-                out.push(words);
+            if !read.words.is_empty() {
+                out.push(read);
             }
         }
-        Ok(out)
+        Ok(arabic::merge_bands(out))
     }
 
     /// Recognise the text in an RGBA (or RGB, or grey) image, `width` × `height` pixels.

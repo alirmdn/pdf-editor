@@ -17,3 +17,7 @@ rten = { version = "0.26.0", default-features = false, features = ["rten_format"
 rten-tensor = "0.26.0"
 rten-imageproc = "0.26.0"
 thiserror.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+# Windows' own text recogniser (Windows.Media.Ocr), used when the page's language is installed.
+windows = { version = "0.62", default-features = false, features = ["std", "Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Storage_Streams"] }

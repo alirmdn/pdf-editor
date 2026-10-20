@@ -4229,6 +4229,7 @@ dependencies = [
  "rten-imageproc",
  "rten-tensor",
  "thiserror 2.0.21",
+ "windows",
 ]
 
 [[package]]

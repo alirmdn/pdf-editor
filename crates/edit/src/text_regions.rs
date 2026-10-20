@@ -102,6 +102,23 @@ fn ocr_rtl_row(row: &[usize], lines: &[TextLine]) -> bool {
     runs.peek().is_some() && runs.all(invisible) && row.iter().filter_map(|i| lines.get(*i)).any(right_to_left)
 }
 
+/// Whether two OCR rows of Latin text are lines of one scanned paragraph, edited as one block
+/// and redrawn whole like an Arabic one. The upper row must read like running text (three
+/// words or more, at least eight text heights wide) and both rows must be invisible text of a
+/// similar size; a form's stacked labels and values (one or two words a row) stay apart.
+fn ocr_paragraph_rows(upper: &[usize], lower: &[usize], lines: &[TextLine]) -> bool {
+    let runs = |row: &[usize]| row.iter().filter_map(|i| lines.get(*i)).collect::<Vec<_>>();
+    let (up, low) = (runs(upper), runs(lower));
+    let all_ocr = |r: &[&TextLine]| !r.is_empty() && r.iter().all(|l| invisible(l));
+    if !(all_ocr(&up) && all_ocr(&low)) {
+        return false;
+    }
+    let size = |r: &[&TextLine]| r.iter().map(|l| l.size).fold(0.0f64, f64::max);
+    let (su, sl) = (size(&up), size(&low));
+    let Some(width) = frame_row_rect(upper, lines).map(|r| r[2] - r[0]) else { return false };
+    up.len() >= 3 && su > 0.0 && width >= su * 8.0 && su.min(sl) >= su.max(sl) * 0.6
+}
+
 fn group_layout(lines: &[TextLine], mixed: bool) -> Vec<TextBlock> {
     let mut rows: Vec<Vec<usize>> = Vec::new();
     for (i, line) in lines.iter().enumerate() {
@@ -149,7 +166,10 @@ fn group_layout(lines: &[TextLine], mixed: bool) -> Vec<TextBlock> {
             // OCR lines stay apart: the scan fixes where each one is, so they never rewrap together.
             // Arabic OCR lines are the exception: a scanned Arabic paragraph is edited as one
             // block and redrawn whole, shaped, over a cover (`shaped_arabic_rewrite`).
-            (!mixed || !(invisible(prev) || invisible(first)) || (ocr_rtl_row(prev_row, lines) && ocr_rtl_row(&row, lines)))
+            (!mixed
+                || !(invisible(prev) || invisible(first))
+                || (ocr_rtl_row(prev_row, lines) && ocr_rtl_row(&row, lines))
+                || ocr_paragraph_rows(prev_row, &row, lines))
                 && (mixed || same_style(prev, first))
                 && same_plane(prev, first)
                 && aligned

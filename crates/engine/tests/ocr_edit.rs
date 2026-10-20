@@ -244,6 +244,26 @@ fn tight_arabic_ocr_words_keep_their_spaces() {
     assert_eq!(blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>(), ["في يوم 10 من"], "{blocks:?}");
 }
 
+/// Scanned English running text is one paragraph block, and a rewrite redraws it whole.
+#[test]
+fn latin_ocr_paragraph_is_one_block() {
+    let (mut s, id) = scanned_with(vec![
+        word("The", 10.0, 30.0, 70.0),
+        word("quick", 34.0, 62.0, 70.0),
+        word("brown", 66.0, 98.0, 70.0),
+        word("fox", 102.0, 120.0, 70.0),
+        word("today", 124.0, 160.0, 70.0),
+        word("jumps", 10.0, 42.0, 56.0),
+        word("over", 46.0, 70.0, 56.0),
+    ]);
+    let blocks = s.get(id).unwrap().text_blocks(0);
+    assert_eq!(blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>(), ["The quick brown fox today jumps over"], "{blocks:?}");
+    s.apply(id, Edit::EditTextBlock { page: 0, block: 0, text: "A slow dog sleeps".into(), style: Default::default() }).unwrap();
+    let blocks = s.get(id).unwrap().text_blocks(0);
+    assert!(blocks.iter().any(|b| !b.invisible && b.text.contains("slow dog")), "{blocks:?}");
+    assert!(!blocks.iter().any(|b| b.text.contains("quick")), "the old words are gone: {blocks:?}");
+}
+
 /// Latin OCR lines still stay apart (a form's lines must not rewrap together).
 #[test]
 fn latin_ocr_lines_stay_apart() {
