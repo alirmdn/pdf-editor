@@ -50,7 +50,11 @@ $Dist = if ($env:DIST) { $env:DIST } else { Join-Path $Root 'dist\release' }
 $TargetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $Root 'target' }
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 
-if (-not $env:PDFCRAFT_BUILD_SHA) { $env:PDFCRAFT_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
+# A copy of the source that is not a git checkout has no commit to stamp; build without one.
+if (-not $env:PDFCRAFT_BUILD_SHA) {
+  try { $env:PDFCRAFT_BUILD_SHA = (& git -C $Root rev-parse HEAD 2>$null) } catch { $env:PDFCRAFT_BUILD_SHA = $null }
+  if ($LASTEXITCODE -ne 0) { $env:PDFCRAFT_BUILD_SHA = $null; $global:LASTEXITCODE = 0 }
+}
 if (-not $env:PDFCRAFT_BUILD_DATE) { $env:PDFCRAFT_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
 
 Write-Output "PDF Editor $Version for Windows $Arch ($Target)"
