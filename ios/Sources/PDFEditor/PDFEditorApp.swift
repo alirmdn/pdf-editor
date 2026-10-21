@@ -4,11 +4,22 @@ import SwiftUI
 struct PDFEditorApp: App {
     @State private var store = FileStore.shared
     @State private var opened: URL?
+    @State private var subscription = Subscription.shared
 
     var body: some Scene {
         WindowGroup {
-            HomeView(opened: $opened)
+            Group {
+                switch subscription.access {
+                case .subscribed:
+                    HomeView(opened: $opened)
+                case .locked:
+                    PaywallView()
+                case .checking:
+                    ProgressView()
+                }
+            }
                 .environment(store)
+                .environment(subscription)
                 .tint(Theme.accent)
                 .preferredColorScheme(.dark)
                 // "Open in PDF Editor" from Files, Mail, WhatsApp…

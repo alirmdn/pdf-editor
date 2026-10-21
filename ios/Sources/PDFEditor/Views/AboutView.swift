@@ -3,6 +3,7 @@ import SwiftUI
 /// About & Licences: the credits the bundled code, fonts and models require.
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var managing = false
 
     private let credits: [(String, String)] = [
         ("PdfCraft engine", "PDF Editor is based on PdfCraft 0.9.0 by the PdfCraft contributors. MIT OR Apache-2.0. PDF Editor is not affiliated with the PdfCraft or ArtCraft teams."),
@@ -27,6 +28,14 @@ struct AboutView: View {
                     }
                     .padding(.vertical, 6)
                 }
+                if !Subscription.paywallDisabled {
+                    Section("Subscription") {
+                        Button("Manage Subscription") { managing = true }
+                        Button("Restore Purchases") { Task { await Subscription.shared.restore() } }
+                        Link("Terms of Use", destination: Subscription.termsURL)
+                        Link("Privacy Policy", destination: Subscription.privacyURL)
+                    }
+                }
                 Section("Licences") {
                     ForEach(credits, id: \.0) { credit in
                         VStack(alignment: .leading, spacing: 4) {
@@ -37,6 +46,7 @@ struct AboutView: View {
                     }
                 }
             }
+            .manageSubscriptionsSheet(isPresented: $managing)
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
