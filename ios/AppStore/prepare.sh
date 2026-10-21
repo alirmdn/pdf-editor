@@ -35,6 +35,9 @@ set_key CFBundleDevelopmentRegion string en
 set_key CFBundleShortVersionString string '$(MARKETING_VERSION)'
 set_key CFBundleVersion string '$(CURRENT_PROJECT_VERSION)'
 set_key LSRequiresIPhoneOS bool true
+# Export compliance is answered in App Store Connect (TestFlight asks once per build): declaring
+# non-exempt encryption here would need a compliance code Apple issues for documented encryption.
+pb "Delete :ITSAppUsesNonExemptEncryption"
 # A launch screen (else the app runs letterboxed and App Review rejects the iPad build).
 pb "Delete :UILaunchScreen"
 /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" "$PLIST"
