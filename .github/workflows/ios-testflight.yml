@@ -131,6 +131,11 @@ jobs:
           cp "$KEY" ~/.appstoreconnect/private_keys/
           xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" --output-format normal \
             2>&1 | tee "$RUNNER_TEMP/upload.log" || { report "$RUNNER_TEMP/upload.log"; exit 1; }
+          # altool's own verdict, on the run page.
+          grep -iE "upload|error|succeeded|failed|delivery|uuid" "$RUNNER_TEMP/upload.log" | head -20 | while IFS= read -r line; do echo "::notice::$line"; done
+          if grep -qiE "error|failed" "$RUNNER_TEMP/upload.log" && ! grep -qi "UPLOAD SUCCEEDED" "$RUNNER_TEMP/upload.log"; then
+            report "$RUNNER_TEMP/upload.log"; exit 1
+          fi
           rm -rf ~/.appstoreconnect/private_keys
           rm -f "$KEY"
           echo "Uploaded. It appears in TestFlight after Apple processes it (usually 5-30 minutes)."

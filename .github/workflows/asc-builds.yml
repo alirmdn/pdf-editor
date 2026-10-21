@@ -1,0 +1,23 @@
+name: App Store Connect builds
+
+# Manual: shows what App Store Connect did with the uploaded builds (processing state, errors).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  builds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pyjwt cryptography
+      - name: List uploads and builds
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          BUNDLE_ID: com.alirmdn.pdfeditor
+        run: python3 .github/scripts/asc_builds.py
