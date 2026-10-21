@@ -2435,7 +2435,7 @@ animation effects	Off	オフ
 	Page properties	ページのプロパティ
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	アラビア語と英語のテキスト編集に対応した、高速でプライベートな Windows 用 PDF エディター。
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	オープンソースの PdfCraft プロジェクト (MIT OR Apache-2.0) をベースにしています。
+	Includes open-source components under the MIT and Apache 2.0 licences.	MIT ライセンスおよび Apache 2.0 ライセンスのオープンソースコンポーネントを含みます。
 	Create PDF	PDF を作成
 	Open PDF	PDF を開く
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	アラビア語と英語の PDF を、このコンピューター上で安全に開いて編集・署名できます。

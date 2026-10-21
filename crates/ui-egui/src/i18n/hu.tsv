@@ -133,7 +133,7 @@
 	Next page	Következő oldal
 	Previous page	Előző oldal
 	Current page — type a page number or label (such as iv) and press Enter	Aktuális oldal — írj be egy oldalszámot vagy címkét (például iv), majd nyomd meg az Entert
-	Welcome to PDF Editor	Üdvözöljük a PdfCraftban
+	Welcome to PDF Editor	Üdvözöljük a PDF Editorban
 	An open-source PDF workbench — local, private, and scriptable.	Nyílt forráskódú PDF-munkapad — helyi, privát és parancsfájlokkal vezérelhető.
 	Join the ArtCraft community	Csatlakozz az ArtCraft közösséghez
 	Get help, share feedback and follow development on Discord.	Kérj segítséget, oszd meg a véleményed, és kövesd a fejlesztést a Discordon.
@@ -141,7 +141,7 @@
 	Use now	Használat most
 	Open file	Fájl megnyitása
 	Recent	Legutóbbiak
-	Files you open in PDF Editor appear here. Drop a PDF anywhere to open it.	A PdfCraftban megnyitott fájlok itt jelennek meg. Húzz ide egy PDF-et a megnyitáshoz.
+	Files you open in PDF Editor appear here. Drop a PDF anywhere to open it.	A PDF Editorban megnyitott fájlok itt jelennek meg. Húzz ide egy PDF-et a megnyitáshoz.
 	Privacy	Adatvédelem
 	PDF Editor works offline. No telemetry, no account, and no cloud processing unless you add a provider.	A PDF Editor offline működik. Nincs telemetria, nincs fiók, és nincs felhőfeldolgozás, amíg nem adsz hozzá szolgáltatót.
 	Scripts run in a sandbox without file or network access. With JavaScript off, Acrobat's standard format, validate and calculate functions still work.	A szkriptek homokozóban futnak, fájl- és hálózat-hozzáférés nélkül. Kikapcsolt JavaScript mellett az Acrobat szabványos formázó, ellenőrző és számoló függvényei továbbra is működnek.
@@ -286,7 +286,7 @@
 	PDF Editor on GitHub	PDF Editor a GitHubon
 	ArtCraft website	Az ArtCraft webhelye
 	Check for updates…	Frissítések keresése…
-	About PDF Editor	A PdfCraftról
+	About PDF Editor	A PDF Editorról
 	Export a PDF	PDF exportálása
 	Export to	Exportálás ide
 	Microsoft Word (.docx)	Microsoft Word (.docx)
@@ -867,8 +867,8 @@
 	No changes allowed	Semmilyen módosítás nem engedélyezett
 	Annotations, form fill-in, and digital signatures	Széljegyzetek, űrlapkitöltés és digitális aláírások
 	Form fill-in and digital signatures	Űrlapkitöltés és digitális aláírások
-	The key is in the macOS Keychain, which may ask to allow PDF Editor to use it.	A kulcs a macOS Kulcskarikában van, amely megkérdezheti, engedélyezed-e a PdfCraftnak a használatát.
-	The key is in the Windows certificate store, which may ask to allow PDF Editor to use it.	A kulcs a Windows tanúsítványtárolójában van, amely megkérdezheti, engedélyezed-e a PdfCraftnak a használatát.
+	The key is in the macOS Keychain, which may ask to allow PDF Editor to use it.	A kulcs a macOS Kulcskarikában van, amely megkérdezheti, engedélyezed-e a PDF Editornak a használatát.
+	The key is in the Windows certificate store, which may ask to allow PDF Editor to use it.	A kulcs a Windows tanúsítványtárolójában van, amely megkérdezheti, engedélyezed-e a PDF Editornak a használatát.
 	Digital ID password	A digitális azonosító jelszava
 	Back	Vissza
 	Validate all	Összes ellenőrzése
@@ -1228,7 +1228,7 @@
 	Downsample to	Feloldás csökkentése erre
 	Also recognize pages that already have text	A már szöveget tartalmazó oldalak felismerése is
 	Pictures on those pages are recognized too; words already in the page's text are not added again	Az ezeken az oldalakon lévő képeket is felismeri; az oldal szövegében már szereplő szavakat nem adja hozzá újra
-	Text recognition isn't installed: its model files are missing. Reinstall PDF Editor, or set PDFCRAFT_MODELS to the folder that holds them.	A szövegfelismerés nincs telepítve: hiányoznak a modellfájljai. Telepítsd újra a PdfCraftot, vagy állítsd a PDFCRAFT_MODELS változót az őket tartalmazó mappára.
+	Text recognition isn't installed: its model files are missing. Reinstall PDF Editor, or set PDFCRAFT_MODELS to the folder that holds them.	A szövegfelismerés nincs telepítve: hiányoznak a modellfájljai. Telepítsd újra a PDF Editorot, vagy állítsd a PDFCRAFT_MODELS változót az őket tartalmazó mappára.
 	Settings	Beállítások
 	Optional	Nem kötelező
 	Planned · {m}	Tervezett · {m}
@@ -1765,7 +1765,7 @@
 	there are no pages to print	nincs nyomtatható oldal
 	the document has no tags	a dokumentumnak nincs címkéje
 	{0}: {1}	{0}: {1}
-	the text recognition models are not installed (reinstall PDF Editor, or set PDFCRAFT_MODELS to the folder that holds them)	a szövegfelismerés modelljei nincsenek telepítve (telepítsd újra a PdfCraftot, vagy állítsd a PDFCRAFT_MODELS változót az őket tartalmazó mappára)
+	the text recognition models are not installed (reinstall PDF Editor, or set PDFCRAFT_MODELS to the folder that holds them)	a szövegfelismerés modelljei nincsenek telepítve (telepítsd újra a PDF Editorot, vagy állítsd a PDFCRAFT_MODELS változót az őket tartalmazó mappára)
 	the image is empty	a kép üres
 	this file isn't XFDF, FDF, XML or text form data	ez a fájl nem XFDF, FDF, XML vagy szöveges űrlapadat
 	nothing in the file matches this document	a fájlban semmi sem illeszkedik ehhez a dokumentumhoz
@@ -2434,7 +2434,7 @@ animation effects	Off	Ki
 	Page properties	Oldaltulajdonságok
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Gyors, adatvédelmi szempontból biztonságos PDF-szerkesztő Windowsra, arab és angol szövegszerkesztéssel.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	A nyílt forráskódú PdfCraft projekten alapul (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Nyílt forráskódú összetevőket tartalmaz az MIT és az Apache 2.0 licenc alapján.
 	Create PDF	PDF létrehozása
 	Open PDF	PDF megnyitása
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	PDF-ek megnyitása, szerkesztése és aláírása arabul és angolul, biztonságosan ezen a számítógépen.

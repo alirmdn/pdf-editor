@@ -2712,7 +2712,7 @@ certificate	Version	الإصدار
 	Page properties	خصائص الصفحة
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	محرر PDF سريع وخاص لنظام Windows، مع تحرير النصوص العربية والإنجليزية.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	مبني على مشروع PdfCraft مفتوح المصدر (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	يتضمن مكونات مفتوحة المصدر بموجب ترخيصَي MIT و Apache 2.0.
 	Create PDF	إنشاء PDF
 	Open PDF	فتح PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	افتح ملفات PDF وحرّرها ووقّعها بالعربية والإنجليزية، بخصوصية على هذا الكمبيوتر.

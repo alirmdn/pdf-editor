@@ -2385,7 +2385,7 @@ animation effects	Off	關
 	Page properties	頁面屬性
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	一款快速、私密的 Windows PDF 編輯器，支援阿拉伯文和英文文字編輯。
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	以開放原始碼專案 PdfCraft (MIT OR Apache-2.0) 為基礎。
+	Includes open-source components under the MIT and Apache 2.0 licences.	包含採用 MIT 與 Apache 2.0 授權條款的開放原始碼元件。
 	Create PDF	建立 PDF
 	Open PDF	開啟 PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	在這台電腦上私密地開啟、編輯和簽署阿拉伯文和英文 PDF。

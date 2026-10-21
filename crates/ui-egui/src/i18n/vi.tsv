@@ -2688,7 +2688,7 @@ key	Space	Space
 	You are viewing revision {rev} of “{from}”. It is a snapshot: changes here won't affect the original.	Bạn đang xem bản sửa đổi {rev} của “{from}”. Đây là ảnh nhanh: các thay đổi ở đây không được áp dụng đến bản gốc.
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Trình chỉnh sửa PDF nhanh và riêng tư cho Windows, hỗ trợ chỉnh sửa văn bản tiếng Ả Rập và tiếng Anh.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Dựa trên dự án mã nguồn mở PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Bao gồm các thành phần mã nguồn mở theo giấy phép MIT và Apache 2.0.
 	Create PDF	Tạo PDF
 	Open PDF	Mở PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Mở, chỉnh sửa và ký PDF bằng tiếng Ả Rập và tiếng Anh, riêng tư trên máy tính này.

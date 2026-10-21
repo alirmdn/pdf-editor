@@ -2431,7 +2431,7 @@ animation effects	Off	Kapalı
 	Page properties	Sayfa özellikleri
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Arapça ve İngilizce metin düzenleme özellikli, Windows için hızlı ve gizli bir PDF düzenleyici.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Açık kaynaklı PdfCraft projesine dayanır (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	MIT ve Apache 2.0 lisansları altında açık kaynaklı bileşenler içerir.
 	Create PDF	PDF oluştur
 	Open PDF	PDF aç
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Arapça ve İngilizce PDF'leri bu bilgisayarda gizli olarak açın, düzenleyin ve imzalayın.

@@ -2398,7 +2398,7 @@ animation effects	Off	Изключени
 	Page properties	Свойства на страницата
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Бърз и поверителен PDF редактор за Windows с редактиране на текст на арабски и английски.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Базиран на проекта с отворен код PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Съдържа компоненти с отворен код по лицензите MIT и Apache 2.0.
 	Create PDF	Създаване на PDF
 	Open PDF	Отваряне на PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Отваряйте, редактирайте и подписвайте PDF файлове на арабски и английски, поверително на този компютър.

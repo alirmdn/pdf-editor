@@ -2686,7 +2686,7 @@ key	Space	Tarpas
 theme	Appearance	Išvaizda
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Greitas ir privatus PDF redaktorius, skirtas Windows, su arabiško ir angliško teksto redagavimu.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Sukurtas pagal atvirojo kodo projektą PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Apima atvirojo kodo komponentus pagal MIT ir Apache 2.0 licencijas.
 	Create PDF	Kurti PDF
 	Open PDF	Atidaryti PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Atidarykite, redaguokite ir pasirašykite PDF arabų ir anglų kalbomis, privačiai šiame kompiuteryje.

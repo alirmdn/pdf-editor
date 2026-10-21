@@ -287,7 +287,7 @@ key	Space	Mezerník
 	Use now	Použít
 	Open file	Otevřít soubor
 	Recent	Nedávné
-	Files you open in PDF Editor appear here. Drop a PDF anywhere to open it.	Zde se zobrazí soubory, které otevřete v PdfCraftu. Soubor PDF otevřete přetažením kamkoli do okna.
+	Files you open in PDF Editor appear here. Drop a PDF anywhere to open it.	Zde se zobrazí soubory, které otevřete v PDF Editoru. Soubor PDF otevřete přetažením kamkoli do okna.
 	Privacy	Soukromí
 	PDF Editor works offline. No telemetry, no account, and no cloud processing unless you add a provider.	PDF Editor funguje offline. Žádná telemetrie, žádný účet a žádné zpracování v cloudu, pokud nepřidáte poskytovatele.
 	Scripts run in a sandbox without file or network access. With JavaScript off, Acrobat's standard format, validate and calculate functions still work.	Skripty běží v izolovaném prostředí bez přístupu k souborům a síti. S vypnutým JavaScriptem dál fungují standardní funkce Acrobatu pro formátování, ověření a výpočty.
@@ -970,8 +970,8 @@ key	Space	Mezerník
 	No changes allowed	Nejsou povoleny žádné změny
 	Annotations, form fill-in, and digital signatures	Anotace, vyplňování formulářů a digitální podpisy
 	Form fill-in and digital signatures	Vyplňování formulářů a digitální podpisy
-	The key is in the macOS Keychain, which may ask to allow PDF Editor to use it.	Klíč je v Klíčence systému macOS, která se může zeptat, zda PdfCraftu povolit jeho použití.
-	The key is in the Windows certificate store, which may ask to allow PDF Editor to use it.	Klíč je v úložišti certifikátů Windows, které se může zeptat, zda PdfCraftu povolit jeho použití.
+	The key is in the macOS Keychain, which may ask to allow PDF Editor to use it.	Klíč je v Klíčence systému macOS, která se může zeptat, zda PDF Editoru povolit jeho použití.
+	The key is in the Windows certificate store, which may ask to allow PDF Editor to use it.	Klíč je v úložišti certifikátů Windows, které se může zeptat, zda PDF Editoru povolit jeho použití.
 	Digital ID password	Heslo digitálního ID
 	Back	Zpět
 	Validate all	Ověřit vše
@@ -2509,7 +2509,7 @@ animation effects	Off	Vypnuto
 	Page properties	Vlastnosti stránky
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Rychlý a soukromý editor PDF pro Windows s úpravami arabského a anglického textu.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Založeno na open-source projektu PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Obsahuje open-source komponenty pod licencemi MIT a Apache 2.0.
 	Create PDF	Vytvořit PDF
 	Open PDF	Otevřít PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Otevírejte, upravujte a podepisujte PDF v arabštině a angličtině, soukromě na tomto počítači.

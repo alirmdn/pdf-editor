@@ -2433,7 +2433,7 @@ animation effects	Off	Өшірулі
 	Page properties	Бет қасиеттері
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Араб және ағылшын мәтінін өңдеуге арналған Windows жүйесіне жылдам әрі құпия PDF өңдегіші.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	PdfCraft ашық бастапқы кодты жобасына негізделген (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	MIT және Apache 2.0 лицензияларымен ашық бастапқы кодты құрамдастарды қамтиды.
 	Create PDF	PDF жасау
 	Open PDF	PDF ашу
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Араб және ағылшын тілдеріндегі PDF файлдарын осы компьютерде құпия түрде ашып, өңдеп, қол қойыңыз.

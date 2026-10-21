@@ -2441,7 +2441,7 @@ animation effects	Off	Ανενεργά
 	Page properties	Ιδιότητες σελίδας
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Ένας γρήγορος, ιδιωτικός επεξεργαστής PDF για Windows, με επεξεργασία κειμένου στα αραβικά και τα αγγλικά.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Βασίζεται στο έργο ανοιχτού κώδικα PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Περιλαμβάνει στοιχεία ανοιχτού κώδικα με τις άδειες MIT και Apache 2.0.
 	Create PDF	Δημιουργία PDF
 	Open PDF	Άνοιγμα PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Ανοίξτε, επεξεργαστείτε και υπογράψτε PDF στα αραβικά και τα αγγλικά, ιδιωτικά σε αυτόν τον υπολογιστή.

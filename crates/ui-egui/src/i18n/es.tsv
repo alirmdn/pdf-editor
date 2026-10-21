@@ -2575,7 +2575,7 @@ animation effects	Off	Desactivados
 	You are viewing revision {rev} of “{from}”. It is a snapshot: changes here won't affect the original.	Estás viendo la revisión {rev} de «{from}». Es una instantánea: los cambios aquí no afectarán al original.
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Un editor de PDF rápido y privado para Windows, con edición de texto en árabe e inglés.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Basado en el proyecto de código abierto PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Incluye componentes de código abierto con las licencias MIT y Apache 2.0.
 	Create PDF	Crear PDF
 	Open PDF	Abrir PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Abra, edite y firme PDF en árabe e inglés, de forma privada en este equipo.

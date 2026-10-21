@@ -2647,7 +2647,7 @@ certificate	SHA-1 digest	Impronta SHA-1
 certificate	SHA-256 digest	Impronta SHA-256
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Un editor PDF veloce e riservato per Windows, con modifica del testo in arabo e in inglese.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Basato sul progetto open source PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Include componenti open source con licenze MIT e Apache 2.0.
 	Create PDF	Crea PDF
 	Open PDF	Apri PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Apri, modifica e firma PDF in arabo e in inglese, in modo riservato su questo computer.

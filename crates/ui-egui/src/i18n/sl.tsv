@@ -783,7 +783,7 @@
 	Files are combined from top to bottom. Leave Pages empty to take every page.	Datoteke se združijo od zgoraj navzdol. Če pustite Strani prazno, se vzamejo vse strani.
 	Files are combined in this order. Leave Pages empty to take every page.	Datoteke se združijo v tem vrstnem redu. Če pustite Strani prazno, se vzamejo vse strani.
 	Files for {name}	Datoteke za {name}
-	Files you open in PDF Editor appear here. Drop a PDF anywhere to open it.	Datoteke, ki jih odprete v PdfCraftu, se prikažejo tukaj. Spustite PDF kamor koli, da ga odprete.
+	Files you open in PDF Editor appear here. Drop a PDF anywhere to open it.	Datoteke, ki jih odprete v PDF Editoru, se prikažejo tukaj. Spustite PDF kamor koli, da ga odprete.
 	Fill	Izpolni
 	Fill & Sign	Izpolni in podpiši
 	Fill & Sign: add text	Izpolni in podpiši: dodaj besedilo
@@ -1469,7 +1469,7 @@
 	Rename	Preimenuj
 	Rename bookmark	Preimenuj zaznamek
 	Rendering: hayro (bootstrap) · UI: egui · Icons: Lucide (ISC) · Fonts: Inter, JetBrains Mono, Dancing Script (OFL)	Izris: hayro (bootstrap) · Vmesnik: egui · Ikone: Lucide (ISC) · Pisave: Inter, JetBrains Mono, Dancing Script (OFL)
-	Reopen the files that were open when PDF Editor last closed	Ponovno odpri datoteke, ki so bile odprte ob zadnjem zaprtju PdfCrafta
+	Reopen the files that were open when PDF Editor last closed	Ponovno odpri datoteke, ki so bile odprte ob zadnjem zaprtju PDF Editora
 	Repair log	Dnevnik popravil
 	Repairs	Popravila
 	Repeat overlay text	Ponovi besedilo prekrivanja
@@ -1975,7 +1975,7 @@
 	Warnings	Opozorila
 	Watermark	Vodni žig
 	Weak	Šibko
-	Welcome to PDF Editor	Dobrodošli v PdfCraftu
+	Welcome to PDF Editor	Dobrodošli v PDF Editoru
 	What word or phrase would you like to search for?	Katero besedo ali besedno zvezo želite poiskati?
 	Whole words only	Samo cele besede
 	Width	Širina
@@ -2440,7 +2440,7 @@ animation effects	Off	Izklopljeni
 	Page properties	Lastnosti strani
 # PDF Editor
 	A fast, private PDF editor for Windows, with Arabic and English text editing.	Hiter in zaseben urejevalnik PDF za Windows z urejanjem besedila v arabščini in angleščini.
-	Based on the open-source PdfCraft project (MIT OR Apache-2.0).	Temelji na odprtokodnem projektu PdfCraft (MIT OR Apache-2.0).
+	Includes open-source components under the MIT and Apache 2.0 licences.	Vključuje odprtokodne komponente z licencama MIT in Apache 2.0.
 	Create PDF	Ustvari PDF
 	Open PDF	Odpri PDF
 	Open, edit and sign PDFs in Arabic and English, privately on this computer.	Odpirajte, urejajte in podpisujte PDF-je v arabščini in angleščini, zasebno v tem računalniku.

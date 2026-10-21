@@ -1160,7 +1160,7 @@ fn dialogs(app: &mut PdfCraftApp, ctx: &egui::Context) {
                         });
                         ui.add_space(6.0);
                         ui.label(tl!("A fast, private PDF editor for Windows, with Arabic and English text editing."));
-                        ui.label(egui::RichText::new(tl!("Based on the open-source PdfCraft project (MIT OR Apache-2.0).")).color(t.text_muted).small());
+                        ui.label(egui::RichText::new(tl!("Includes open-source components under the MIT and Apache 2.0 licences.")).color(t.text_muted).small());
                         ui.label(
                             egui::RichText::new(
                                 "Rendering: hayro (bootstrap) · UI: egui · Icons: Lucide (ISC) · Fonts: Inter, JetBrains Mono, Dancing Script (OFL)",
