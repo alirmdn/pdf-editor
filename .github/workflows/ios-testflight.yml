@@ -110,9 +110,14 @@ jobs:
               | grep -v "warning:" | sort -u | head -40 | while IFS= read -r line; do echo "::error::$line"; done
           }
           set -o pipefail
+          # The archive is built unsigned: signing it would make Xcode create a new Apple
+          # Development certificate on every fresh cloud Mac, and an account holds only a few.
+          # The export below signs it once for the App Store, with Apple's cloud-managed
+          # distribution certificate.
           xcodebuild -project ios/AppStore/PDFEditor.xcodeproj -scheme PDFEditor -configuration Release \
             -destination generic/platform=iOS -archivePath "$RUNNER_TEMP/PDFEditor.xcarchive" \
-            "${AUTH[@]}" archive 2>&1 | tee "$RUNNER_TEMP/archive.log" || { report "$RUNNER_TEMP/archive.log"; exit 1; }
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            archive 2>&1 | tee "$RUNNER_TEMP/archive.log" || { report "$RUNNER_TEMP/archive.log"; exit 1; }
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
