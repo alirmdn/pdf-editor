@@ -20,7 +20,7 @@ final class Subscription {
 
     /// Shown under the subscribe button, as App Review requires (guideline 3.1.2).
     static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
-    static let privacyURL = URL(string: "https://aliramadann.github.io/pdf-editor-support/")!
+    static let privacyURL = URL(string: "https://aliramadann.github.io/pdf-editor-support/privacy.html")!
 
     enum Access: Equatable {
         case checking
