@@ -113,16 +113,24 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
             <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
+            <key>destination</key><string>export</string>
             <key>teamID</key><string>$APPLE_TEAM_ID</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
             <key>manageAppVersionAndBuildNumber</key><false/>
           </dict></plist>
           PLIST
-          echo "==> Uploading build $BUILD_NUMBER (version $APP_VERSION) to App Store Connect"
+          echo "==> Signing the .ipa for the App Store"
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/PDFEditor.xcarchive" \
             -exportPath "$RUNNER_TEMP/export" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             "${AUTH[@]}" 2>&1 | tee "$RUNNER_TEMP/export.log" || { report "$RUNNER_TEMP/export.log"; exit 1; }
+          IPA="$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)"
+          echo "==> Uploading build $BUILD_NUMBER (version $APP_VERSION) to App Store Connect: $IPA"
+          # altool reads the key from ~/.appstoreconnect/private_keys and reports Apple's own errors.
+          mkdir -p ~/.appstoreconnect/private_keys
+          cp "$KEY" ~/.appstoreconnect/private_keys/
+          xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" --output-format normal \
+            2>&1 | tee "$RUNNER_TEMP/upload.log" || { report "$RUNNER_TEMP/upload.log"; exit 1; }
+          rm -rf ~/.appstoreconnect/private_keys
           rm -f "$KEY"
           echo "Uploaded. It appears in TestFlight after Apple processes it (usually 5-30 minutes)."
