@@ -660,12 +660,21 @@ impl Automation {
             if text.is_empty() || text.len() > 4_000 || ![l, r, t, b].iter().all(|v| v.is_finite() && v.abs() < 1e6) || r - l < 0.01 || b - t < 0.01 {
                 continue;
             }
-            let word = pdfcraft_engine::ocr::Word { text: text.to_owned(), rect: [l as f32, t as f32, r as f32, b as f32] };
-            words.push(pdfcraft_engine::ocr::PlacedWord::place(&word, |x, y| {
-                let [u, v] = info.view_to_user(x, y);
-                [u as f64, v as f64]
-            }));
+            words.push(pdfcraft_engine::ocr::Word { text: text.to_owned(), rect: [l as f32, t as f32, r as f32, b as f32] });
         }
+        // A stamp's or signature's coloured ink reads as junk words: they are left out.
+        let id = self.doc(a)?.id;
+        let words: Vec<_> = self
+            .session
+            .without_stamp_words(id, page, words)
+            .iter()
+            .map(|word| {
+                pdfcraft_engine::ocr::PlacedWord::place(word, |x, y| {
+                    let [u, v] = info.view_to_user(x, y);
+                    [u as f64, v as f64]
+                })
+            })
+            .collect();
         let count = words.len();
         if count == 0 {
             return Ok(json!({ "page": page + 1, "words": 0 }));

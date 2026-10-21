@@ -111,6 +111,7 @@ impl Line {
 }
 
 pub mod arabic;
+pub mod stamps;
 pub mod windows_ocr;
 
 /// A loaded recogniser. Loading takes a moment; keep one and reuse it.

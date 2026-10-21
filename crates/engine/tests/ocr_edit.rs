@@ -270,3 +270,38 @@ fn latin_ocr_lines_stay_apart() {
     let (s, id) = scanned_with(vec![word("First", 20.0, 60.0, 70.0), word("Second", 20.0, 66.0, 56.0)]);
     assert_eq!(s.get(id).unwrap().text_blocks(0).len(), 2);
 }
+
+/// Words another recogniser read (the iPhone's Vision) that are a seal's coloured ink are left
+/// out; black words beside it, or printed across it, stay.
+#[test]
+fn a_seals_words_are_left_out() {
+    let (w, h) = (300u32, 400u32);
+    let mut rgba = Vec::new();
+    for y in 0..h {
+        for x in 0..w {
+            let (dx, dy) = (x as f32 - 150.0, y as f32 - 250.0);
+            let d = (dx * dx + dy * dy).sqrt();
+            let ring = (42.0..50.0).contains(&d) || ((135..165).contains(&x) && (235..265).contains(&y) && x % 4 < 2);
+            let text = (20..280).contains(&x) && (40..52).contains(&y);
+            let over = (110..190).contains(&x) && (290..300).contains(&y);
+            rgba.extend(if text || over {
+                [15, 15, 15]
+            } else if ring {
+                [70, 60, 180]
+            } else {
+                [255, 255, 255]
+            });
+            rgba.push(255);
+        }
+    }
+    let png = export::encode_png(w, h, &rgba).unwrap();
+    let mut s = Session::new();
+    let bytes = s.create_from_images(&[("scan.png".into(), png)]).unwrap();
+    let id = s.open("scan.pdf", None, bytes, None).unwrap();
+    let info = s.get(id).unwrap().info.pages[0].clone();
+    let k = info.width / w as f32;
+    let word = |t: &str, r: [f32; 4]| pdfcraft_engine::ocr::Word { text: t.into(), rect: r.map(|v| v * k) };
+    let words = vec![word("text", [20.0, 40.0, 280.0, 52.0]), word("seal", [135.0, 235.0, 165.0, 265.0]), word("over", [110.0, 288.0, 190.0, 301.0])];
+    let kept: Vec<String> = s.without_stamp_words(id, 0, words).into_iter().map(|w| w.text).collect();
+    assert_eq!(kept, ["text", "over"]);
+}

@@ -131,7 +131,8 @@ impl OcrJob {
                 continue;
             }
             let lines = match ocr.recognize_in(&shot.rgba, shot.width, shot.height, &self.settings.language) {
-                Ok(l) => l,
+                // A stamp's or signature's coloured ink reads as junk words: they are left out.
+                Ok(l) => pdfcraft_ocr::stamps::drop_stamped(l, &shot.rgba, shot.width, shot.height),
                 Err(e) => {
                     out.push(skip(&e.to_string()));
                     continue;
@@ -188,6 +189,29 @@ impl Session {
             })
             .collect();
         Some(OcrJob { bytes: doc.bytes.clone(), password: doc.password.clone(), infos: doc.info.pages.clone(), native, pages, settings })
+    }
+
+    /// `words` read on `page` of document `id` by another recogniser (boxes in the displayed
+    /// page's points, top-left origin), without those that are a stamp's or signature's ink
+    /// ([`pdfcraft_ocr::stamps`]). The page is rendered to look at the ink; if it cannot be, the
+    /// words come back as they are.
+    pub fn without_stamp_words(&self, id: DocId, page: usize, words: Vec<Word>) -> Vec<Word> {
+        let Some(doc) = self.get(id) else { return words };
+        let Some(info) = doc.info.pages.get(page) else { return words };
+        let long = info.width.max(info.height).max(1.0);
+        let scale = (2000.0 / long).clamp(0.5, 4.0);
+        let config = RenderConfig { password: doc.password.as_deref().map(Arc::from), ..Default::default() };
+        let shot = PageRenderer::new(doc.bytes.clone(), config).render(RenderRequest { page, scale, ..Default::default() });
+        if shot.error.is_some() || shot.width == 0 || shot.height == 0 {
+            return words;
+        }
+        let stamps = pdfcraft_ocr::stamps::find(&shot.rgba, shot.width, shot.height);
+        if stamps.is_empty() {
+            return words;
+        }
+        // View points → pixels: the render is the displayed page at `scale` pixels per point.
+        let k = shot.width as f32 / info.width.max(1e-3);
+        words.into_iter().filter(|w| !pdfcraft_ocr::stamps::is_stamped(&shot.rgba, shot.width, shot.height, &stamps, w.rect.map(|v| v * k))).collect()
     }
 
     /// Add the words found by [`OcrJob::run`] as one undoable step. Returns the number of words.
