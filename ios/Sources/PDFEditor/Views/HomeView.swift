@@ -9,7 +9,7 @@ struct HomeView: View {
     @Binding var opened: URL?
     @State private var importing = false
     @State private var scanning = false
-    @State private var showingAbout = false
+    @State private var showingSettings = false
     @State private var renaming: StoredFile?
     @State private var newName = ""
     @State private var errorMessage: String?
@@ -29,6 +29,10 @@ struct HomeView: View {
             .background(Color.black.ignoresSafeArea())
             .navigationTitle("PDF Editor")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingSettings = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Settings")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Open PDF", systemImage: "folder") { importing = true }
@@ -36,7 +40,7 @@ struct HomeView: View {
                             Button("Scan Document", systemImage: "doc.viewfinder") { scanning = true }
                         }
                         Divider()
-                        Button("About & Licences", systemImage: "info.circle") { showingAbout = true }
+                        Button("Settings", systemImage: "gearshape") { showingSettings = true }
                     } label: {
                         Image(systemName: "plus.circle.fill").font(.title2)
                     }
@@ -61,7 +65,7 @@ struct HomeView: View {
             }
             .ignoresSafeArea()
         }
-        .sheet(isPresented: $showingAbout) { AboutView() }
+        .sheet(isPresented: $showingSettings) { SettingsView() }
         .alert("Rename", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("Name", text: $newName)
             Button("Cancel", role: .cancel) {}

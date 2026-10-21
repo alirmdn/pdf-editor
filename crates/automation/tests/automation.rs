@@ -6522,3 +6522,39 @@ fn ocr_add_words_builds_an_editable_text_layer() {
     assert!(a.call("ocr_add_words", &json!({ "doc": doc, "page": 1, "words": [{ "text": "x" }] })).is_err());
     assert!(a.call("ocr_add_words", &json!({ "doc": doc, "page": 2, "words": [] })).is_err());
 }
+
+/// An image signature placed in a box of the user's own (dragged and sized on screen) fills
+/// that box; rect without an image is refused.
+#[test]
+fn an_image_signature_fills_the_box_it_is_given() {
+    let dir = workdir("fill-sign-rect");
+    let rgba = image::RgbaImage::from_pixel(300, 100, image::Rgba([0, 0, 0, 255]));
+    rgba.save(dir.join("drawn.png")).unwrap();
+    std::fs::write(dir.join("form.pdf"), fixture(1)).unwrap();
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({ "path": "form.pdf" }))["doc"].as_u64().unwrap();
+    ok(
+        &mut a,
+        "fill_sign_add",
+        json!({ "doc": doc, "page": 1, "type": "signature", "at": [0, 0], "path": "drawn.png", "rect": [50, 100, 290, 180] }),
+    );
+    let list = ok(&mut a, "comment_list", json!({ "doc": doc, "page": 1 }));
+    let r: Vec<f64> = list["comments"][0]["rect"].as_array().unwrap_or_else(|| panic!("{list}")).iter().map(|v| v.as_f64().unwrap()).collect();
+    for (got, want) in r.iter().zip([50.0, 100.0, 290.0, 180.0]) {
+        assert!((got - want).abs() < 0.5, "{r:?}");
+    }
+    refused_with(&mut a, "fill_sign_add", json!({ "doc": doc, "page": 1, "type": "date", "at": [20, 20], "rect": [0, 0, 10, 10] }), "rect is only");
+    refused_with(
+        &mut a,
+        "fill_sign_add",
+        json!({ "doc": doc, "page": 1, "type": "signature", "at": [0, 0], "path": "drawn.png", "rect": [5, 5, 5, 50] }),
+        "width and a height",
+    );
+}
+
+fn refused_with(a: &mut Automation, tool: &str, args: Value, needle: &str) {
+    match a.call(tool, &args) {
+        Err(e) => assert!(e.to_string().contains(needle), "{e}"),
+        Ok(out) => panic!("{tool} should be refused: {out:?}"),
+    }
+}

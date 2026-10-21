@@ -92,7 +92,7 @@ struct SignaturePad: View {
         // Rendered in light mode, so the ink stays black (dark mode would draw it white).
         var image = UIImage()
         UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
-            image = drawing.image(from: bounds, scale: 3)
+            image = drawing.image(from: bounds, scale: 4)
         }
         do {
             try SignatureStore.save(image, as: kind)
@@ -111,7 +111,7 @@ private struct CanvasView: UIViewRepresentable {
     func makeUIView(context: Context) -> PKCanvasView {
         let canvas = PKCanvasView()
         canvas.drawingPolicy = .anyInput
-        canvas.tool = PKInkingTool(.pen, color: .black, width: 4)
+        canvas.tool = PKInkingTool(.pen, color: .black, width: 7)
         canvas.backgroundColor = .white
         canvas.isOpaque = true
         canvas.overrideUserInterfaceStyle = .light

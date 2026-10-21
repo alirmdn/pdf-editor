@@ -485,6 +485,9 @@ impl Automation {
         if !(4.0..=300.0).contains(&size) {
             return Err(ToolError::InvalidArgs("font_size must be 4–300 pt".into()));
         }
+        if a.get("rect").is_some() && a.opt_str("path")?.is_none() {
+            return Err(ToolError::InvalidArgs("rect is only for an image signature or initials (with path)".into()));
+        }
         if let Some(path) = a.opt_str("path")? {
             if !matches!(kind, "signature" | "initials") || a.opt_str("text")?.is_some() {
                 return Err(ToolError::InvalidArgs("path is only for an image signature or initials; pass either path or text".into()));
@@ -505,7 +508,13 @@ impl Automation {
             } else {
                 pdfcraft_engine::SignatureImage::read(file).map_err(|e| ToolError::InvalidArgs(e.to_string()))?
             };
-            let edit = image.edit(page, &info, at, kind == "initials", &author).ok_or_else(|| ToolError::InvalidArgs("at must be finite".into()))?;
+            let edit = match a.nums::<4>("rect")? {
+                // Where the user dragged and sized it.
+                Some(r) => image
+                    .edit_in(page, rect_to_user(&info, r), kind == "initials", &author)
+                    .ok_or_else(|| ToolError::InvalidArgs("rect must have a width and a height".into()))?,
+                None => image.edit(page, &info, at, kind == "initials", &author).ok_or_else(|| ToolError::InvalidArgs("at must be finite".into()))?,
+            };
             return self.apply(a, edit);
         }
         let text_at = |t: &str| {

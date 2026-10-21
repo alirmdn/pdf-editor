@@ -16,10 +16,13 @@ enum SignMark: Hashable {
     case date
     case check
 
+    /// Placed with a preview the user drags and sizes, rather than by a tap.
+    var isDrawn: Bool { self == .signature || self == .initials }
+
     var prompt: String {
         switch self {
-        case .signature: "Tap where your signature goes"
-        case .initials: "Tap where your initials go"
+        case .signature: "Drag your signature into place, pull the corner to resize"
+        case .initials: "Drag your initials into place, pull the corner to resize"
         case .date: "Tap where today's date goes"
         case .check: "Tap where the checkmark goes"
         }
@@ -38,6 +41,8 @@ struct DocumentView: View {
     @State private var confirmingScan = false
     /// The drawing pad, when the user is drawing a new signature or initials.
     @State private var drawing: SignatureStore.Kind?
+    /// Bumped by Place: the page view places the previewed signature where it is.
+    @State private var placeToken = 0
 
     var body: some View {
         PDFKitView(
@@ -47,8 +52,10 @@ struct DocumentView: View {
             tool: tool,
             query: searching ? query : "",
             searchToken: searchToken,
+            placeToken: placeToken,
             onTapParagraph: { page, paragraph in editing = (page, paragraph) },
-            onPlace: { page, point in place(at: point, on: page) }
+            onPlace: { page, point in place(at: point, on: page) },
+            onPlaceRect: { page, rect in place(in: rect, on: page) }
         )
         .ignoresSafeArea(edges: .bottom)
         .background(Color.black)
@@ -128,17 +135,22 @@ struct DocumentView: View {
         }
     }
 
-    /// Place the chosen mark at `point` (displayed page space) on `page`, then go back to reading.
+    /// Place the previewed signature or initials in `rect` (displayed page space) on `page`.
+    private func place(in rect: CGRect, on page: Int) {
+        guard case .place(let mark) = tool, mark.isDrawn else { return }
+        tool = .read
+        let kind: SignatureStore.Kind = mark == .signature ? .signature : .initials
+        Task { await model.fillSign(kind.rawValue, page: page, at: rect.origin, image: SignatureStore.url(kind), rect: rect) }
+    }
+
+    /// Place the date or a checkmark at `point` (displayed page space) on `page`.
     private func place(at point: CGPoint, on page: Int) {
-        guard case .place(let mark) = tool else { return }
+        guard case .place(let mark) = tool, !mark.isDrawn else { return }
         tool = .read
         Task {
             switch mark {
             case .signature, .initials:
-                let kind: SignatureStore.Kind = mark == .signature ? .signature : .initials
-                // The engine places the drawing by its left edge, so centre it on the finger.
-                let at = CGPoint(x: max(0, point.x - SignatureStore.placedWidth(kind) / 2), y: point.y)
-                await model.fillSign(kind.rawValue, page: page, at: at, image: SignatureStore.url(kind))
+                break
             case .date:
                 await model.fillSign("date", page: page, at: CGPoint(x: max(0, point.x - 28), y: max(0, point.y - 6)))
             case .check:
@@ -222,9 +234,15 @@ struct DocumentView: View {
         } else if tool == .editText {
             hint("Tap a paragraph to edit it")
         } else if case .place(let mark) = tool {
-            HStack(spacing: 10) {
-                Text(mark.prompt)
-                Button("Cancel") { tool = .read }.fontWeight(.semibold)
+            VStack(spacing: 8) {
+                Text(mark.prompt).multilineTextAlignment(.center)
+                HStack(spacing: 18) {
+                    Button("Cancel") { tool = .read }
+                    if mark.isDrawn {
+                        Button("Place") { placeToken += 1 }.fontWeight(.bold)
+                    }
+                }
+                .fontWeight(.semibold)
             }
             .modifier(HintStyle())
         }
@@ -257,12 +275,22 @@ struct PDFKitView: UIViewRepresentable {
     let tool: DocumentTool
     let query: String
     let searchToken: Int
+    let placeToken: Int
     let onTapParagraph: (Int, Paragraph) -> Void
-    /// A tap while placing a Fill & Sign mark: the page (0-based) and the displayed-space point.
+    /// A tap while placing the date or a checkmark: the page (0-based) and the displayed-space point.
     let onPlace: (Int, CGPoint) -> Void
+    /// Place pressed with a signature previewed: the page (0-based) and its displayed-space box.
+    let onPlaceRect: (Int, CGRect) -> Void
 
-    func makeUIView(context: Context) -> PDFView {
+    /// A container: the PDF view, with the signature preview above it (outside the PDF view's
+    /// scrolling, so dragging the preview never scrolls the page).
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView()
+        container.backgroundColor = .black
         let view = PDFView()
+        view.frame = container.bounds
+        view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.addSubview(view)
         view.autoScales = true
         view.displayMode = .singlePageContinuous
         view.displayDirection = .vertical
@@ -275,12 +303,14 @@ struct PDFKitView: UIViewRepresentable {
             context.coordinator, selector: #selector(Coordinator.pageChanged(_:)), name: .PDFViewPageChanged, object: view
         )
         context.coordinator.view = view
-        return view
+        context.coordinator.container = container
+        return container
     }
 
-    func updateUIView(_ view: PDFView, context: Context) {
+    func updateUIView(_ container: UIView, context: Context) {
         let c = context.coordinator
         c.parent = self
+        guard let view = c.view else { return }
         if c.revision != revision || view.document == nil {
             let page = model.currentPage
             c.revision = revision
@@ -293,6 +323,11 @@ struct PDFKitView: UIViewRepresentable {
             c.searchToken = searchToken
             c.search(query)
         }
+        c.syncPreview()
+        if placeToken != c.placeToken {
+            c.placeToken = placeToken
+            c.commitPreview()
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -301,8 +336,13 @@ struct PDFKitView: UIViewRepresentable {
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var parent: PDFKitView
         weak var view: PDFView?
+        weak var container: UIView?
         var revision = -1
         var searchToken = 0
+        var placeToken = 0
+        /// The signature being placed, and which drawing it shows.
+        private var preview: MarkPreview?
+        private var previewKind: SignatureStore.Kind?
         /// The outline annotations added in Edit Text mode (on screen only, never saved).
         var outlines: [(PDFPage, PDFAnnotation)] = []
 
@@ -338,8 +378,13 @@ struct PDFKitView: UIViewRepresentable {
             guard let page = view.page(for: point, nearest: true) else { return }
             let index = doc.index(for: page)
             let at = page.displayPoint(view.convert(point, to: page))
-            if case .place = parent.tool {
-                parent.onPlace(index, at)
+            if case .place(let mark) = parent.tool {
+                if mark.isDrawn {
+                    // A tap moves the preview there.
+                    if let preview, let container { preview.center = view.convert(point, to: container) }
+                } else {
+                    parent.onPlace(index, at)
+                }
                 return
             }
             guard parent.tool == .editText else { return }
@@ -349,6 +394,40 @@ struct PDFKitView: UIViewRepresentable {
                 .filter { $0.rect.insetBy(dx: -6, dy: -6).contains(at) }
                 .min { $0.rect.width * $0.rect.height < $1.rect.width * $1.rect.height }
             if let hit { parent.onTapParagraph(index, hit) }
+        }
+
+        /// Show the signature preview while a signature or initials is being placed.
+        func syncPreview() {
+            var kind: SignatureStore.Kind?
+            if case .place(let mark) = parent.tool, mark.isDrawn { kind = mark == .signature ? .signature : .initials }
+            guard let kind, let container, let image = UIImage(contentsOfFile: SignatureStore.url(kind).path) else {
+                preview?.removeFromSuperview()
+                preview = nil
+                previewKind = nil
+                return
+            }
+            if preview != nil, previewKind == kind { return }
+            preview?.removeFromSuperview()
+            let aspect = image.size.width / max(image.size.height, 1)
+            let width = min(container.bounds.width * 0.55, 260)
+            let height = width / max(aspect, 0.1)
+            let frame = CGRect(x: (container.bounds.width - width) / 2, y: container.bounds.height * 0.42 - height / 2, width: width, height: height)
+            let p = MarkPreview(image: image, frame: frame)
+            container.addSubview(p)
+            preview = p
+            previewKind = kind
+        }
+
+        /// Place the previewed signature where it is on screen.
+        func commitPreview() {
+            guard let preview, let container, let view, let doc = view.document else { return }
+            let frame = container.convert(preview.frame, to: view)
+            guard let page = view.page(for: CGPoint(x: frame.midX, y: frame.midY), nearest: true) else { return }
+            let r = view.convert(frame, to: page)
+            let a = page.displayPoint(CGPoint(x: r.minX, y: r.minY))
+            let b = page.displayPoint(CGPoint(x: r.maxX, y: r.maxY))
+            let display = CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
+            parent.onPlaceRect(doc.index(for: page), display)
         }
 
         func search(_ text: String) {
@@ -366,5 +445,80 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+}
+
+/// The signature being placed: drag it to move, pinch or pull the corner handle to resize (it
+/// keeps its proportions). Lives above the PDF view, so it never scrolls the page.
+final class MarkPreview: UIView {
+    private let imageView: UIImageView
+    private let handle = UIView()
+    private let aspect: CGFloat
+
+    init(image: UIImage, frame: CGRect) {
+        imageView = UIImageView(image: image)
+        aspect = max(image.size.width / max(image.size.height, 1), 0.1)
+        super.init(frame: frame)
+        imageView.contentMode = .scaleToFill
+        addSubview(imageView)
+        backgroundColor = UIColor.white.withAlphaComponent(0.12)
+        layer.borderColor = UIColor(Theme.accent).cgColor
+        layer.borderWidth = 1.5
+        layer.cornerRadius = 4
+        handle.backgroundColor = UIColor(Theme.accent)
+        handle.layer.cornerRadius = 14
+        handle.layer.borderColor = UIColor.white.cgColor
+        handle.layer.borderWidth = 2
+        addSubview(handle)
+        addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(move(_:))))
+        addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinch(_:))))
+        handle.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(resize(_:))))
+        isAccessibilityElement = true
+        accessibilityLabel = "Signature preview. Drag to move it, pinch to resize it, then tap Place."
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        imageView.frame = bounds
+        handle.frame = CGRect(x: bounds.maxX - 14, y: bounds.maxY - 14, width: 28, height: 28)
+    }
+
+    /// The corner handle sits half outside the box; it still takes touches.
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        bounds.insetBy(dx: -18, dy: -18).contains(point)
+    }
+
+    @objc private func move(_ g: UIPanGestureRecognizer) {
+        let t = g.translation(in: superview)
+        center = CGPoint(x: center.x + t.x, y: center.y + t.y)
+        g.setTranslation(.zero, in: superview)
+    }
+
+    @objc private func resize(_ g: UIPanGestureRecognizer) {
+        let t = g.translation(in: superview)
+        setWidth(frame.width + t.x, keepingCenter: false)
+        g.setTranslation(.zero, in: superview)
+    }
+
+    @objc private func pinch(_ g: UIPinchGestureRecognizer) {
+        setWidth(frame.width * g.scale, keepingCenter: true)
+        g.scale = 1
+    }
+
+    private func setWidth(_ wanted: CGFloat, keepingCenter: Bool) {
+        let limit = max((superview?.bounds.width ?? 400) * 0.95, 60)
+        let width = min(max(wanted, 40), limit)
+        let size = CGSize(width: width, height: width / aspect)
+        if keepingCenter {
+            let c = center
+            bounds.size = size
+            center = c
+        } else {
+            frame = CGRect(origin: frame.origin, size: size)
+        }
+        setNeedsLayout()
     }
 }

@@ -1,12 +1,9 @@
 import SwiftUI
 
-/// About & Licences: the credits the bundled code, fonts and models require.
+/// About: the version, and the credits the bundled open-source code, fonts and models require.
 struct AboutView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var managing = false
-
     private let credits: [(String, String)] = [
-        ("PdfCraft engine", "PDF Editor is based on PdfCraft 0.9.0 by the PdfCraft contributors. MIT OR Apache-2.0. PDF Editor is not affiliated with the PdfCraft or ArtCraft teams."),
+        ("PdfCraft", "Open-source PDF engine by the PdfCraft contributors, used under the MIT OR Apache-2.0 licence."),
         ("Noto Sans Arabic", "Google and the Noto project. SIL Open Font License 1.1."),
         ("Japanese fonts", "BIZ UD and Shippori Mincho faces. SIL Open Font License 1.1."),
         ("PP-OCRv5 Arabic model", "PaddlePaddle Authors (PaddleOCR). Apache License 2.0."),
@@ -14,42 +11,36 @@ struct AboutView: View {
         ("Lucide icons", "Lucide contributors. ISC License."),
     ]
 
+    private var version: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = info?["CFBundleVersion"] as? String
+        return build.map { "\(short) (\($0))" } ?? short
+    }
+
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("PDF Editor").font(.title2.bold())
-                        Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
-                            .foregroundStyle(.secondary)
-                        Text("Works offline. No account, no tracking, no data leaves this device.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 6)
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("PDF Editor").font(.title2.bold())
+                    Text("Version \(version)").foregroundStyle(.secondary)
+                    Text("Edit, sign and scan PDFs in Arabic and English. Everything works on this iPhone: no account, no tracking, and your files never leave the device.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-                if !Subscription.paywallDisabled {
-                    Section("Subscription") {
-                        Button("Manage Subscription") { managing = true }
-                        Button("Restore Purchases") { Task { await Subscription.shared.restore() } }
-                        Link("Terms of Use", destination: Subscription.termsURL)
-                        Link("Privacy Policy", destination: Subscription.privacyURL)
+                .padding(.vertical, 6)
+            }
+            Section("Open-source licences") {
+                ForEach(credits, id: \.0) { credit in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(credit.0).font(.subheadline.weight(.semibold))
+                        Text(credit.1).font(.footnote).foregroundStyle(.secondary)
                     }
-                }
-                Section("Licences") {
-                    ForEach(credits, id: \.0) { credit in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(credit.0).font(.subheadline.weight(.semibold))
-                            Text(credit.1).font(.footnote).foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 2)
-                    }
+                    .padding(.vertical, 2)
                 }
             }
-            .manageSubscriptionsSheet(isPresented: $managing)
-            .navigationTitle("About")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        .navigationTitle("About")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

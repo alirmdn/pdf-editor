@@ -226,6 +226,15 @@ impl SignatureImage {
 
     pub fn edit(&self, page: usize, info: &PageInfo, at: [f64; 2], initials: bool, author: &str) -> Option<Edit> {
         let rect = self.rect(info, at, initials)?;
+        self.edit_in(page, rect, initials, author)
+    }
+
+    /// The image placed in `rect` (user space, any size the user dragged it to). `None` for a box
+    /// that is not finite or has no area.
+    pub fn edit_in(&self, page: usize, rect: [f64; 4], initials: bool, author: &str) -> Option<Edit> {
+        if !rect.iter().all(|v| v.is_finite()) || rect[2] <= rect[0] || rect[3] <= rect[1] {
+            return None;
+        }
         let label = if initials { "Add initials" } else { "Add signature" };
         Some(Edit::Batch {
             label: label.into(),
@@ -266,6 +275,12 @@ mod tests {
         let Edit::AddCustomStamp { rect, .. } = &edits[0] else { panic!() };
         assert_eq!(*rect, [20.0, 92.5, 170.0, 107.5]);
         assert!(image.edit(0, &page(0), [f64::NAN, 0.0], false, "").is_none());
+        // Placed in a box of its own: that box, as given.
+        let Edit::Batch { edits, .. } = image.edit_in(0, [10.0, 20.0, 310.0, 50.0], false, "Ada").unwrap() else { panic!() };
+        let Edit::AddCustomStamp { rect, .. } = &edits[0] else { panic!() };
+        assert_eq!(*rect, [10.0, 20.0, 310.0, 50.0]);
+        assert!(image.edit_in(0, [5.0, 0.0, 5.0, 10.0], false, "").is_none());
+        assert!(image.edit_in(0, [0.0, 0.0, f64::INFINITY, 10.0], false, "").is_none());
         assert_eq!(SignatureImage::from_bytes(image.bytes()).unwrap(), image);
     }
 

@@ -6,8 +6,8 @@ A fast, private PDF editor for Windows: read, edit text and images, organize pag
 comment, protect and export, with Arabic and English text editing. Everything runs on your
 computer: no account, no telemetry, no cloud processing.
 
-PDF Editor is a modified version of [PdfCraft](https://github.com/storytold/pdfcraft) 0.9.0
-(MIT OR Apache-2.0). It is not affiliated with or endorsed by the PdfCraft or ArtCraft teams.
+PDF Editor is built on the open-source [PdfCraft](https://github.com/storytold/pdfcraft) engine
+(MIT OR Apache-2.0), with its own app, features and improvements on top.
 See [NOTICE](NOTICE), [ATTRIBUTION.md](ATTRIBUTION.md) and the licence files.
 
 ## What is different from PdfCraft
