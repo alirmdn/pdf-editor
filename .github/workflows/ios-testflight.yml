@@ -15,6 +15,10 @@ on:
       version:
         description: Version shown in the App Store (e.g. 1.0.0)
         default: "1.0.0"
+      compile_only:
+        description: Only check that the app builds (no signing, no upload, no secrets needed)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,7 +37,7 @@ jobs:
       CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
       CRAFT_FONTS_REQUIRED: "1"
       IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || 'NONE' }}
       APP_VERSION: ${{ inputs.version }}
       # Every upload needs a higher build number than the last.
       BUILD_NUMBER: ${{ github.run_number }}
@@ -57,13 +61,14 @@ jobs:
           key: ios-arm64
 
       - name: Check the secrets are set
+        if: ${{ !inputs.compile_only }}
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           for v in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
-            [ -n "${!v}" ] || { echo "::error::The repository secret $v is not set (see the top of this workflow)"; exit 1; }
+            [ -n "${!v}" ] && [ "${!v}" != NONE ] || { echo "::error::The repository secret $v is not set (see the top of this workflow)"; exit 1; }
           done
 
       - name: Build the PDF engine for iPhone
@@ -78,7 +83,14 @@ jobs:
       - name: Generate the Xcode project
         run: ios/AppStore/prepare.sh
 
+      - name: Compile only (unsigned)
+        if: ${{ inputs.compile_only }}
+        run: |
+          xcodebuild -project ios/AppStore/PDFEditor.xcodeproj -scheme PDFEditor -configuration Release \
+            -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM= build
+
       - name: Archive (signed for the App Store)
+        if: ${{ !inputs.compile_only }}
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
