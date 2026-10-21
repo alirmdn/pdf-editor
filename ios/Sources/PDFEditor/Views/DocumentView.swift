@@ -470,9 +470,9 @@ final class MarkPreview: UIView {
         handle.layer.borderColor = UIColor.white.cgColor
         handle.layer.borderWidth = 2
         addSubview(handle)
-        addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(move(_:))))
-        addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinch(_:))))
-        handle.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(resize(_:))))
+        addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(dragged(_:))))
+        addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinched(_:))))
+        handle.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(resized(_:))))
         isAccessibilityElement = true
         accessibilityLabel = "Signature preview. Drag to move it, pinch to resize it, then tap Place."
     }
@@ -491,19 +491,19 @@ final class MarkPreview: UIView {
         bounds.insetBy(dx: -18, dy: -18).contains(point)
     }
 
-    @objc private func move(_ g: UIPanGestureRecognizer) {
+    @objc private func dragged(_ g: UIPanGestureRecognizer) {
         let t = g.translation(in: superview)
         center = CGPoint(x: center.x + t.x, y: center.y + t.y)
         g.setTranslation(.zero, in: superview)
     }
 
-    @objc private func resize(_ g: UIPanGestureRecognizer) {
+    @objc private func resized(_ g: UIPanGestureRecognizer) {
         let t = g.translation(in: superview)
         setWidth(frame.width + t.x, keepingCenter: false)
         g.setTranslation(.zero, in: superview)
     }
 
-    @objc private func pinch(_ g: UIPinchGestureRecognizer) {
+    @objc private func pinched(_ g: UIPinchGestureRecognizer) {
         setWidth(frame.width * g.scale, keepingCenter: true)
         g.scale = 1
     }
