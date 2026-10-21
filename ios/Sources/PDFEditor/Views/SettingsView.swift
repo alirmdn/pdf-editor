@@ -11,7 +11,7 @@ struct SettingsView: View {
     @State private var redeeming = false
     @State private var restoring = false
     @State private var message: String?
-    @State private var drawing: SignatureStore.Kind?
+    @State private var managingKind: SignatureStore.Kind?
     @State private var confirmingDelete = false
     /// Bumped when the saved signature changes, so its row updates.
     @State private var signatureRevision = 0
@@ -32,8 +32,8 @@ struct SettingsView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .manageSubscriptionsSheet(isPresented: $managing, subscriptionGroupID: Subscription.groupID)
             .offerCodeRedemption(isPresented: $redeeming) { _ in Task { await subscription.refresh() } }
-            .sheet(isPresented: Binding(get: { drawing != nil }, set: { if !$0 { drawing = nil } })) {
-                if let kind = drawing { SignaturePad(kind: kind) { signatureRevision += 1 } }
+            .sheet(isPresented: Binding(get: { managingKind != nil }, set: { if !$0 { managingKind = nil; signatureRevision += 1 } })) {
+                if let kind = managingKind { SignaturePicker(kind: kind) { _ in signatureRevision += 1 } }
             }
             .alert("PDF Editor", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) {}
@@ -122,22 +122,30 @@ struct SettingsView: View {
     private var signatureSection: some View {
         Section {
             let _ = signatureRevision
-            Button { drawing = .signature } label: {
-                Label(SignatureStore.exists(.signature) ? "Redraw Signature" : "Draw Signature", systemImage: "signature")
+            Button { managingKind = .signature } label: {
+                LabeledContent {
+                    Text("\(SignatureStore.saved(.signature).count) of \(SignatureStore.limit)")
+                } label: {
+                    Label("Signatures", systemImage: "signature")
+                }
             }
-            Button { drawing = .initials } label: {
-                Label(SignatureStore.exists(.initials) ? "Redraw Initials" : "Draw Initials", systemImage: "pencil.tip")
+            Button { managingKind = .initials } label: {
+                LabeledContent {
+                    Text("\(SignatureStore.saved(.initials).count) of \(SignatureStore.limit)")
+                } label: {
+                    Label("Initials", systemImage: "pencil.tip")
+                }
             }
             if SignatureStore.exists(.signature) || SignatureStore.exists(.initials) {
                 Button(role: .destructive) {
                     SignatureStore.clear()
                     signatureRevision += 1
-                } label: { Label("Forget Saved Signature", systemImage: "trash") }
+                } label: { Label("Forget All Saved Signatures", systemImage: "trash") }
             }
         } header: {
             Text("Signature")
         } footer: {
-            Text("Your signature and initials are kept on this iPhone only, to sign the next document in one tap.")
+            Text("Up to \(SignatureStore.limit) signatures and \(SignatureStore.limit) initials are kept on this iPhone only, to sign documents in a tap.")
         }
     }
 

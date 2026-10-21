@@ -22,6 +22,15 @@ cat > "$ICONSET/Contents.json" <<'JSON'
 }
 JSON
 
+# The launch screen's background: black, like the app.
+mkdir -p Assets.xcassets/LaunchBackground.colorset
+cat > Assets.xcassets/LaunchBackground.colorset/Contents.json <<'JSON'
+{
+  "colors" : [ { "color" : { "color-space" : "srgb", "components" : { "alpha" : "1.000", "blue" : "0.000", "green" : "0.000", "red" : "0.000" } }, "idiom" : "universal" } ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
+JSON
+
 PLIST=Info.plist
 cp ../Info.plist "$PLIST"
 pb() { /usr/libexec/PlistBuddy -c "$1" "$PLIST" >/dev/null 2>&1 || true; }
@@ -41,6 +50,7 @@ pb "Delete :ITSAppUsesNonExemptEncryption"
 # A launch screen (else the app runs letterboxed and App Review rejects the iPad build).
 pb "Delete :UILaunchScreen"
 /usr/libexec/PlistBuddy -c "Add :UILaunchScreen dict" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :UILaunchScreen:UIColorName string LaunchBackground" "$PLIST"
 # iPad multitasking needs every orientation.
 pb "Delete :UISupportedInterfaceOrientations~ipad"
 /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad array" "$PLIST"

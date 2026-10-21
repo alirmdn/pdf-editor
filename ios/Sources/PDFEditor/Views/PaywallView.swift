@@ -8,6 +8,9 @@ struct PaywallView: View {
     @Environment(Subscription.self) private var subscription
     @State private var restoring = false
     @State private var restoreMessage: String?
+    /// Between confirming with Apple and the purchase's result.
+    @State private var purchasing = false
+    @State private var purchaseMessage: String?
 
     var body: some View {
         SubscriptionStoreView(productIDs: Subscription.productIDs) {
@@ -47,8 +50,35 @@ struct PaywallView: View {
         .storeButton(.hidden, for: .restorePurchases)
         .subscriptionStorePolicyDestination(url: Subscription.termsURL, for: .termsOfService)
         .subscriptionStorePolicyDestination(url: Subscription.privacyURL, for: .privacyPolicy)
+        .onInAppPurchaseStart { _ in purchasing = true }
         .onInAppPurchaseCompletion { _, result in
-            await subscription.handle(result)
+            let message = await subscription.handle(result)
+            purchasing = false
+            purchaseMessage = message
+        }
+        .overlay {
+            if purchasing {
+                ZStack {
+                    Color.black.opacity(0.6).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        LogoMark(size: 72, animating: true)
+                        Text("Processing your subscription…").font(.headline)
+                        Text("This can take a few seconds. Please keep the app open.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(28)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+                    .padding(32)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: purchasing)
+        .alert("Subscription", isPresented: Binding(get: { purchaseMessage != nil }, set: { if !$0 { purchaseMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(purchaseMessage ?? "")
         }
         // A subscription made on another device, or approved later (Ask to Buy), unlocks too.
         .subscriptionStatusTask(for: Subscription.groupID) { _ in

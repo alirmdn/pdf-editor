@@ -9,22 +9,55 @@ enum DocumentTool: Hashable {
     case place(SignMark)
 }
 
-/// The marks Fill & Sign places.
+/// The marks Fill & Sign places. Each is placed from a preview the user drags and sizes.
 enum SignMark: Hashable {
-    case signature
-    case initials
+    /// A saved signature or initials drawing.
+    case image(SignatureStore.Kind, URL)
     case date
     case check
 
-    /// Placed with a preview the user drags and sizes, rather than by a tap.
-    var isDrawn: Bool { self == .signature || self == .initials }
-
     var prompt: String {
         switch self {
-        case .signature: "Drag your signature into place, pull the corner to resize"
-        case .initials: "Drag your initials into place, pull the corner to resize"
-        case .date: "Tap where today's date goes"
-        case .check: "Tap where the checkmark goes"
+        case .image(let kind, _): "Drag your \(kind.title.lowercased()) into place. Pinch or pull the corner to resize."
+        case .date: "Drag the date into place. Pinch or pull the corner to resize."
+        case .check: "Drag the checkmark into place. Pinch or pull the corner to resize."
+        }
+    }
+
+    /// Today as Fill & Sign writes it (the engine's default date format, m/d/yyyy).
+    static var today: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "M/d/yyyy"
+        return f.string(from: Date())
+    }
+
+    /// What the preview shows: the drawing, or the date or checkmark drawn the way the page will.
+    var previewImage: UIImage? {
+        switch self {
+        case .image(_, let url):
+            return UIImage(contentsOfFile: url.path)
+        case .date:
+            // Laid out like the engine's text box: 1.2 em tall plus 6 pt, 8 pt wider than the text.
+            let font = UIFont(name: "Helvetica", size: 40) ?? .systemFont(ofSize: 40)
+            let text = Self.today as NSString
+            let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.black]
+            let size = CGSize(width: ceil(text.size(withAttributes: attributes).width) + 8 * 4, height: 40 * 1.2 + 6 * 4)
+            return UIGraphicsImageRenderer(size: size).image { _ in
+                text.draw(at: CGPoint(x: 4 * 4, y: 3 * 4), withAttributes: attributes)
+            }
+        case .check:
+            let config = UIImage.SymbolConfiguration(pointSize: 120, weight: .bold)
+            return UIImage(systemName: "checkmark", withConfiguration: config)?.withTintColor(.black, renderingMode: .alwaysOriginal)
+        }
+    }
+
+    /// The preview's starting width on screen.
+    var previewWidth: CGFloat {
+        switch self {
+        case .image: 220
+        case .date: 150
+        case .check: 48
         }
     }
 }
@@ -39,8 +72,10 @@ struct DocumentView: View {
     @State private var query = ""
     @State private var searchToken = 0
     @State private var confirmingScan = false
-    /// The drawing pad, when the user is drawing a new signature or initials.
+    /// The drawing pad, when the user is drawing their first signature or initials.
     @State private var drawing: SignatureStore.Kind?
+    /// The saved signatures (or initials) to choose from.
+    @State private var picking: SignatureStore.Kind?
     /// Bumped by Place: the page view places the previewed signature where it is.
     @State private var placeToken = 0
 
@@ -54,7 +89,6 @@ struct DocumentView: View {
             searchToken: searchToken,
             placeToken: placeToken,
             onTapParagraph: { page, paragraph in editing = (page, paragraph) },
-            onPlace: { page, point in place(at: point, on: page) },
             onPlaceRect: { page, rect in place(in: rect, on: page) }
         )
         .ignoresSafeArea(edges: .bottom)
@@ -79,7 +113,12 @@ struct DocumentView: View {
         .sheet(isPresented: $showingPages) { OrganizeView(model: model) }
         .sheet(isPresented: Binding(get: { drawing != nil }, set: { if !$0 { drawing = nil } })) {
             if let kind = drawing {
-                SignaturePad(kind: kind) { tool = .place(kind == .signature ? .signature : .initials) }
+                SignaturePad(kind: kind) { url in tool = .place(.image(kind, url)) }
+            }
+        }
+        .sheet(isPresented: Binding(get: { picking != nil }, set: { if !$0 { picking = nil } })) {
+            if let kind = picking {
+                SignaturePicker(kind: kind) { url in tool = .place(.image(kind, url)) }
             }
         }
         .alert("PDF Editor", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
@@ -126,35 +165,27 @@ struct DocumentView: View {
         return false
     }
 
-    /// Start placing `kind`: straight away if it was drawn before, else draw it first.
+    /// Sign with a saved drawing of `kind` (chosen from the list), or draw the first one.
     private func sign(_ kind: SignatureStore.Kind) {
         if SignatureStore.exists(kind) {
-            tool = .place(kind == .signature ? .signature : .initials)
+            picking = kind
         } else {
             drawing = kind
         }
     }
 
-    /// Place the previewed signature or initials in `rect` (displayed page space) on `page`.
+    /// Place the previewed mark in `rect` (displayed page space) on `page`.
     private func place(in rect: CGRect, on page: Int) {
-        guard case .place(let mark) = tool, mark.isDrawn else { return }
-        tool = .read
-        let kind: SignatureStore.Kind = mark == .signature ? .signature : .initials
-        Task { await model.fillSign(kind.rawValue, page: page, at: rect.origin, image: SignatureStore.url(kind), rect: rect) }
-    }
-
-    /// Place the date or a checkmark at `point` (displayed page space) on `page`.
-    private func place(at point: CGPoint, on page: Int) {
-        guard case .place(let mark) = tool, !mark.isDrawn else { return }
+        guard case .place(let mark) = tool else { return }
         tool = .read
         Task {
             switch mark {
-            case .signature, .initials:
-                break
+            case .image(let kind, let url):
+                await model.fillSign(kind.rawValue, page: page, at: rect.origin, image: url, rect: rect)
             case .date:
-                await model.fillSign("date", page: page, at: CGPoint(x: max(0, point.x - 28), y: max(0, point.y - 6)))
+                await model.fillSign("date", page: page, at: rect.origin, rect: rect)
             case .check:
-                await model.fillSign("check", page: page, at: point)
+                await model.fillSign("check", page: page, at: rect.origin, rect: rect)
             }
         }
     }
@@ -165,12 +196,6 @@ struct DocumentView: View {
             Button { sign(.initials) } label: { Label("Add Initials", systemImage: "character.cursor.ibeam") }
             Button { tool = .place(.date) } label: { Label("Add Today's Date", systemImage: "calendar") }
             Button { tool = .place(.check) } label: { Label("Add Checkmark", systemImage: "checkmark") }
-            Divider()
-            Button { drawing = .signature } label: { Label("Draw New Signature", systemImage: "pencil.tip") }
-            Button { drawing = .initials } label: { Label("Draw New Initials", systemImage: "pencil.tip") }
-            if SignatureStore.exists(.signature) || SignatureStore.exists(.initials) {
-                Button(role: .destructive) { SignatureStore.clear() } label: { Label("Forget Saved Signature", systemImage: "trash") }
-            }
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: "signature").font(.system(size: 19, weight: .medium))
@@ -238,9 +263,7 @@ struct DocumentView: View {
                 Text(mark.prompt).multilineTextAlignment(.center)
                 HStack(spacing: 18) {
                     Button("Cancel") { tool = .read }
-                    if mark.isDrawn {
-                        Button("Place") { placeToken += 1 }.fontWeight(.bold)
-                    }
+                    Button("Place") { placeToken += 1 }.fontWeight(.bold)
                 }
                 .fontWeight(.semibold)
             }
@@ -277,8 +300,6 @@ struct PDFKitView: UIViewRepresentable {
     let searchToken: Int
     let placeToken: Int
     let onTapParagraph: (Int, Paragraph) -> Void
-    /// A tap while placing the date or a checkmark: the page (0-based) and the displayed-space point.
-    let onPlace: (Int, CGPoint) -> Void
     /// Place pressed with a signature previewed: the page (0-based) and its displayed-space box.
     let onPlaceRect: (Int, CGRect) -> Void
 
@@ -342,7 +363,7 @@ struct PDFKitView: UIViewRepresentable {
         var placeToken = 0
         /// The signature being placed, and which drawing it shows.
         private var preview: MarkPreview?
-        private var previewKind: SignatureStore.Kind?
+        private var previewMark: SignMark?
         /// The outline annotations added in Edit Text mode (on screen only, never saved).
         var outlines: [(PDFPage, PDFAnnotation)] = []
 
@@ -378,13 +399,9 @@ struct PDFKitView: UIViewRepresentable {
             guard let page = view.page(for: point, nearest: true) else { return }
             let index = doc.index(for: page)
             let at = page.displayPoint(view.convert(point, to: page))
-            if case .place(let mark) = parent.tool {
-                if mark.isDrawn {
-                    // A tap moves the preview there.
-                    if let preview, let container { preview.center = view.convert(point, to: container) }
-                } else {
-                    parent.onPlace(index, at)
-                }
+            if case .place = parent.tool {
+                // A tap moves the preview there.
+                if let preview, let container { preview.center = view.convert(point, to: container) }
                 return
             }
             guard parent.tool == .editText else { return }
@@ -396,26 +413,26 @@ struct PDFKitView: UIViewRepresentable {
             if let hit { parent.onTapParagraph(index, hit) }
         }
 
-        /// Show the signature preview while a signature or initials is being placed.
+        /// Show the preview of the mark being placed.
         func syncPreview() {
-            var kind: SignatureStore.Kind?
-            if case .place(let mark) = parent.tool, mark.isDrawn { kind = mark == .signature ? .signature : .initials }
-            guard let kind, let container, let image = UIImage(contentsOfFile: SignatureStore.url(kind).path) else {
+            var mark: SignMark?
+            if case .place(let m) = parent.tool { mark = m }
+            guard let mark, let container, let image = mark.previewImage else {
                 preview?.removeFromSuperview()
                 preview = nil
-                previewKind = nil
+                previewMark = nil
                 return
             }
-            if preview != nil, previewKind == kind { return }
+            if preview != nil, previewMark == mark { return }
             preview?.removeFromSuperview()
             let aspect = image.size.width / max(image.size.height, 1)
-            let width = min(container.bounds.width * 0.55, 260)
+            let width = min(container.bounds.width * 0.8, mark.previewWidth)
             let height = width / max(aspect, 0.1)
             let frame = CGRect(x: (container.bounds.width - width) / 2, y: container.bounds.height * 0.42 - height / 2, width: width, height: height)
             let p = MarkPreview(image: image, frame: frame)
             container.addSubview(p)
             preview = p
-            previewKind = kind
+            previewMark = mark
         }
 
         /// Place the previewed signature where it is on screen.
@@ -510,7 +527,7 @@ final class MarkPreview: UIView {
 
     private func setWidth(_ wanted: CGFloat, keepingCenter: Bool) {
         let limit = max((superview?.bounds.width ?? 400) * 0.95, 60)
-        let width = min(max(wanted, 40), limit)
+        let width = min(max(wanted, 24), limit)
         let size = CGSize(width: width, height: width / aspect)
         if keepingCenter {
             let c = center

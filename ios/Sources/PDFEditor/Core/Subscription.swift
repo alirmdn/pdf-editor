@@ -88,7 +88,21 @@ final class Subscription {
                 await self?.refresh()
             }
         }
-        Task { await refresh() }
+        Task {
+            // The entitlement StoreKit keeps on the device answers at once, so a subscriber is
+            // let in straight away; the full status (dates, renewal) follows from the App Store.
+            await quickCheck()
+            await refresh()
+        }
+    }
+
+    /// Decide access from the cached entitlement only (no network).
+    private func quickCheck() async {
+        guard access == .checking else { return }
+        if let cached = await Self.cachedDetails() {
+            details = cached
+            access = .subscribed
+        }
     }
 
     /// Re-read the subscription from StoreKit (works offline: StoreKit caches it).
@@ -102,11 +116,31 @@ final class Subscription {
     /// After the subscribe sheet: unlock straight away when the purchase went through, and
     /// welcome the user. StoreKit can take a moment to list a new subscription, so the
     /// purchase's own transaction counts until it does.
-    func handle(_ result: Result<Product.PurchaseResult, Error>) async {
-        guard case .success(.success(let verification)) = result, case .verified(let transaction) = verification else {
+    /// Returns a message for the user when the purchase did not go through.
+    @discardableResult
+    func handle(_ result: Result<Product.PurchaseResult, Error>) async -> String? {
+        switch result {
+        case .success(.success(let verification)):
+            guard case .verified(let transaction) = verification else {
+                return "The App Store could not confirm this purchase. You have not been charged twice: tap Restore Purchases, or try again in a moment."
+            }
+            await complete(transaction)
+            return access == .subscribed ? nil : "Your purchase went through, but the App Store has not confirmed it yet. Tap Restore Purchases in a moment."
+        case .success(.pending):
+            return "Your purchase is waiting for approval (for example Ask to Buy). PDF Editor unlocks as soon as it is approved."
+        case .success(.userCancelled):
+            return nil
+        case .success:
             await refresh()
-            return
+            return nil
+        case .failure(let error):
+            await refresh()
+            if access == .subscribed { return nil }
+            return "The App Store could not complete the purchase (\(error.localizedDescription)). You were not charged. Please try again in a moment."
         }
+    }
+
+    private func complete(_ transaction: Transaction) async {
         await transaction.finish()
         await refresh()
         if access != .subscribed, Self.productIDs.contains(transaction.productID), transaction.revocationDate == nil,
@@ -119,16 +153,24 @@ final class Subscription {
 
     /// "Restore Purchases": sync with the App Store, then say what was found.
     func restore() async -> String {
-        do {
-            try await AppStore.sync()
-        } catch StoreKitError.userCancelled {
-            return "Restore was cancelled."
-        } catch {
-            await refresh()
-            return "The App Store could not be reached (\(error.localizedDescription)). Check your connection and try again."
-        }
+        // StoreKit already knows this Apple ID's purchases; a sync only fetches ones it missed,
+        // and can fail on its own (TestFlight often answers "unable to complete request").
         await refresh()
+        var syncError: Error?
+        if details?.isActive != true {
+            do {
+                try await AppStore.sync()
+            } catch StoreKitError.userCancelled {
+                return "Restore was cancelled."
+            } catch {
+                syncError = error
+            }
+            await refresh()
+        }
         guard let d = details, d.isActive else {
+            if let syncError {
+                return "The App Store did not answer (\(syncError.localizedDescription)) and no subscription is saved on this iPhone. Make sure you are signed in to the App Store with the Apple ID you subscribed with, then try again."
+            }
             return "No active PDF Editor Pro subscription was found for this Apple ID. If you subscribed with another Apple ID, sign in with it in Settings ▸ App Store."
         }
         let until = d.periodEnd.map { " until \($0.formatted(date: .long, time: .omitted))" } ?? ""
@@ -158,6 +200,11 @@ final class Subscription {
         }
         if best != nil { return best }
         // No status (offline, or StoreKit has not caught up): the entitlements StoreKit cached.
+        return await cachedDetails()
+    }
+
+    /// The active entitlement StoreKit has cached on the device, without asking the App Store.
+    private static func cachedDetails() async -> Details? {
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result, productIDs.contains(transaction.productID), transaction.revocationDate == nil else { continue }
             if let expiry = transaction.expirationDate, expiry < Date() { continue }

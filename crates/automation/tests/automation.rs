@@ -6543,7 +6543,22 @@ fn an_image_signature_fills_the_box_it_is_given() {
     for (got, want) in r.iter().zip([50.0, 100.0, 290.0, 180.0]) {
         assert!((got - want).abs() < 0.5, "{r:?}");
     }
-    refused_with(&mut a, "fill_sign_add", json!({ "doc": doc, "page": 1, "type": "date", "at": [20, 20], "rect": [0, 0, 10, 10] }), "rect is only");
+    // A date and a checkmark placed in boxes: the check fills its box, the date starts at its
+    // top-left with a size that fits its height.
+    ok(&mut a, "fill_sign_add", json!({ "doc": doc, "page": 1, "type": "check", "at": [0, 0], "rect": [20, 300, 60, 340] }));
+    ok(&mut a, "fill_sign_add", json!({ "doc": doc, "page": 1, "type": "date", "at": [0, 0], "rect": [100, 400, 220, 430] }));
+    let list = ok(&mut a, "comment_list", json!({ "doc": doc, "page": 1 }));
+    let rect = |i: usize| -> Vec<f64> { list["comments"][i]["rect"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect() };
+    let check = rect(1);
+    assert!((check[0] - 20.0).abs() < 0.5 && (check[3] - 340.0).abs() < 0.5, "{check:?}");
+    let date = rect(2);
+    assert!((date[0] - 100.0).abs() < 0.5 && (date[1] - 400.0).abs() < 0.5 && (date[3] - 430.0).abs() < 1.0, "{date:?}");
+    refused_with(
+        &mut a,
+        "fill_sign_add",
+        json!({ "doc": doc, "page": 1, "type": "signature", "at": [0, 0], "text": "Ada", "rect": [0, 0, 90, 30] }),
+        "typed signature",
+    );
     refused_with(
         &mut a,
         "fill_sign_add",

@@ -470,6 +470,16 @@ impl Automation {
         let author = a.opt_str("author")?.unwrap_or(DEFAULT_AUTHOR).to_string();
         let kind = a.str("type")?;
         let scan = a.opt_bool("scan")?.unwrap_or(false);
+        // The box the user dragged and sized the mark to, displayed space.
+        let placed = a.nums::<4>("rect")?;
+        if let Some(r) = placed
+            && !(r[2] > r[0] && r[3] > r[1])
+        {
+            return Err(ToolError::InvalidArgs("rect must have a width and a height".into()));
+        }
+        if placed.is_some() && a.opt_str("path")?.is_none() && matches!(kind, "signature" | "initials") {
+            return Err(ToolError::InvalidArgs("rect is not for a typed signature or initials; pass path, an image of it".into()));
+        }
         let sensitivity = a.opt_int("sensitivity")?;
         if (scan || sensitivity.is_some()) && a.opt_str("path")?.is_none() {
             return Err(ToolError::InvalidArgs("scan and sensitivity need path, a photo of a signature on paper".into()));
@@ -481,12 +491,17 @@ impl Automation {
         if requested_size.is_some() && !matches!(kind, "text" | "date") {
             return Err(ToolError::InvalidArgs("font_size is only for type text or date".into()));
         }
-        let size = requested_size.unwrap_or(10.0);
+        // Text in a box: as tall as the box (the line height is 1.2 em plus 6 pt of padding).
+        let size = match (placed, matches!(kind, "text" | "date")) {
+            (Some(r), true) => ((r[3] - r[1] - 6.0) / 1.2).clamp(4.0, 300.0),
+            _ => requested_size.unwrap_or(10.0),
+        };
+        let at = match (placed, matches!(kind, "text" | "date")) {
+            (Some(r), true) => to_user(&info, r[0], r[1]),
+            _ => at,
+        };
         if !(4.0..=300.0).contains(&size) {
             return Err(ToolError::InvalidArgs("font_size must be 4–300 pt".into()));
-        }
-        if a.get("rect").is_some() && a.opt_str("path")?.is_none() {
-            return Err(ToolError::InvalidArgs("rect is only for an image signature or initials (with path)".into()));
         }
         if let Some(path) = a.opt_str("path")? {
             if !matches!(kind, "signature" | "initials") || a.opt_str("text")?.is_some() {
@@ -561,7 +576,11 @@ impl Automation {
                     other => return Err(ToolError::InvalidArgs(format!("unknown type {other:?}"))),
                 };
                 let (w, h) = if mark == FillMark::Line { (36.0, 4.0) } else { (12.0, 12.0) };
-                (Shape::Mark { rect: [at[0] - w / 2.0, at[1] - h / 2.0, at[0] + w / 2.0, at[1] + h / 2.0], mark }, String::new())
+                let rect = match placed {
+                    Some(r) => rect_to_user(&info, r),
+                    None => [at[0] - w / 2.0, at[1] - h / 2.0, at[0] + w / 2.0, at[1] + h / 2.0],
+                };
+                (Shape::Mark { rect, mark }, String::new())
             }
         };
         let style = Style::default_for(&shape);

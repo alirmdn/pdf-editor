@@ -1,49 +1,135 @@
 import PencilKit
 import SwiftUI
 
-/// The signature and initials the user drew, kept as transparent PNGs in the app's Documents
-/// folder (the engine reads files from there), and reused until the user draws new ones.
+/// The signatures and initials the user drew, up to three of each, kept as transparent PNGs in
+/// the app's Documents folder (the engine reads files from there) for the next documents.
 enum SignatureStore {
     enum Kind: String {
         case signature
         case initials
 
         var title: String { self == .signature ? "Signature" : "Initials" }
-        /// How tall the engine draws it on the page, in points (fill_sign_add).
-        var height: CGFloat { self == .signature ? 32 : 24 }
+        var plural: String { self == .signature ? "Signatures" : "Initials" }
     }
+
+    /// How many of each kind are kept.
+    static let limit = 3
 
     private static var folder: URL { Engine.shared.root.appendingPathComponent(".signatures", isDirectory: true) }
 
-    static func url(_ kind: Kind) -> URL { folder.appendingPathComponent("\(kind.rawValue).png") }
+    /// The saved drawings of `kind`, oldest first.
+    static func saved(_ kind: Kind) -> [URL] {
+        migrate()
+        let fm = FileManager.default
+        let urls = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.creationDateKey])) ?? []
+        return urls
+            .filter { $0.lastPathComponent.hasPrefix(kind.rawValue + "-") && $0.pathExtension == "png" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
 
-    static func exists(_ kind: Kind) -> Bool { FileManager.default.fileExists(atPath: url(kind).path) }
+    static func exists(_ kind: Kind) -> Bool { !saved(kind).isEmpty }
 
-    static func save(_ image: UIImage, as kind: Kind) throws {
+    static func isFull(_ kind: Kind) -> Bool { saved(kind).count >= limit }
+
+    /// Save a new drawing of `kind`; returns its file. With three saved, the oldest makes room.
+    @discardableResult
+    static func add(_ image: UIImage, as kind: Kind) throws -> URL {
         guard let png = image.pngData() else { throw EngineError(message: "The signature could not be saved.") }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try png.write(to: url(kind), options: .atomic)
+        let existing = saved(kind)
+        if existing.count >= limit, let oldest = existing.first { try? FileManager.default.removeItem(at: oldest) }
+        // Named by time, so the list keeps the order they were drawn in.
+        let stamp = String(format: "%.0f", Date().timeIntervalSince1970 * 1000)
+        let url = folder.appendingPathComponent("\(kind.rawValue)-\(stamp).png")
+        try png.write(to: url, options: .atomic)
+        return url
     }
 
-    /// Width ÷ height of the saved drawing (1 when there is none).
-    static func aspect(_ kind: Kind) -> CGFloat {
-        guard let image = UIImage(contentsOfFile: url(kind).path), image.size.height > 0 else { return 1 }
-        return image.size.width / image.size.height
+    static func remove(_ url: URL) { try? FileManager.default.removeItem(at: url) }
+
+    static func clear() { try? FileManager.default.removeItem(at: folder) }
+
+    /// The single signature.png / initials.png of the first version becomes the first saved one.
+    private static func migrate() {
+        let fm = FileManager.default
+        for kind in [Kind.signature, .initials] {
+            let old = folder.appendingPathComponent("\(kind.rawValue).png")
+            if fm.fileExists(atPath: old.path) {
+                try? fm.moveItem(at: old, to: folder.appendingPathComponent("\(kind.rawValue)-0000000000001.png"))
+            }
+        }
+    }
+}
+
+/// Pick one of the saved signatures (or initials), draw a new one, or delete one.
+struct SignaturePicker: View {
+    let kind: SignatureStore.Kind
+    /// The chosen drawing.
+    let onPick: (URL) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var saved: [URL] = []
+    @State private var drawing = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(saved, id: \.self) { url in
+                        Button {
+                            dismiss()
+                            onPick(url)
+                        } label: {
+                            HStack {
+                                if let image = UIImage(contentsOfFile: url.path) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(height: 56)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(8)
+                                        .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .swipeActions {
+                            Button("Delete", role: .destructive) {
+                                SignatureStore.remove(url)
+                                reload()
+                            }
+                        }
+                    }
+                } footer: {
+                    Text(saved.isEmpty ? "Draw your \(kind.title.lowercased()) to use it." : "Tap one to place it. Swipe left to delete. Up to \(SignatureStore.limit) are kept on this iPhone.")
+                }
+                Section {
+                    Button { drawing = true } label: {
+                        Label(saved.count >= SignatureStore.limit ? "Draw New (replaces the oldest)" : "Draw New \(kind.title)", systemImage: "pencil.tip")
+                    }
+                }
+            }
+            .navigationTitle(kind.plural)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheet(isPresented: $drawing) {
+                SignaturePad(kind: kind) { url in
+                    reload()
+                    dismiss()
+                    onPick(url)
+                }
+            }
+            .onAppear(perform: reload)
+        }
     }
 
-    /// The width the engine gives it on the page: its height, at most 150 points wide.
-    static func placedWidth(_ kind: Kind) -> CGFloat { min(150, kind.height * aspect(kind)) }
-
-    static func clear() {
-        try? FileManager.default.removeItem(at: folder)
-    }
+    private func reload() { saved = SignatureStore.saved(kind) }
 }
 
 /// Draw a signature (or initials) with a finger or Apple Pencil, in black ink on white.
 struct SignaturePad: View {
     let kind: SignatureStore.Kind
-    /// Called after the drawing is saved.
-    let onDone: () -> Void
+    /// Called with the saved drawing's file.
+    let onDone: (URL) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var drawing = PKDrawing()
     @State private var failure: String?
@@ -95,9 +181,9 @@ struct SignaturePad: View {
             image = drawing.image(from: bounds, scale: 4)
         }
         do {
-            try SignatureStore.save(image, as: kind)
+            let url = try SignatureStore.add(image, as: kind)
             dismiss()
-            onDone()
+            onDone(url)
         } catch {
             failure = error.localizedDescription
         }

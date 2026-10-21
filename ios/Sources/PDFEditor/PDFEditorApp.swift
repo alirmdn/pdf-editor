@@ -16,7 +16,7 @@ struct PDFEditorApp: App {
                 case .locked:
                     PaywallView()
                 case .checking:
-                    ProgressView()
+                    SplashView()
                 }
             }
                 .fullScreenCover(isPresented: Binding(get: { subscription.welcome != nil }, set: { if !$0 { subscription.welcome = nil } })) {
