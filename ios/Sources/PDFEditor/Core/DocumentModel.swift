@@ -142,6 +142,19 @@ final class DocumentModel {
         }
     }
 
+    // MARK: Fill & Sign
+
+    /// Place a Fill & Sign mark on `page` (0-based) at `at`, a displayed-space point (top-left
+    /// origin): "signature" and "initials" (the drawing at `image`, its left edge at `at`),
+    /// "date" (today, its top-left at `at`) or "check" (centred on `at`).
+    func fillSign(_ type: String, page: Int, at: CGPoint, image: URL? = nil) async {
+        var edit: [String: Any] = ["page": page + 1, "type": type, "at": [Double(at.x), Double(at.y)]]
+        if let image { edit["path"] = Engine.shared.relativePath(image) }
+        await run(type == "date" || type == "check" ? "Adding…" : "Signing…") {
+            try await commit(edit, tool: "fill_sign_add")
+        }
+    }
+
     // MARK: Pages
 
     func rotate(page: Int, by degrees: Int) async {

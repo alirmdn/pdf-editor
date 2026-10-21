@@ -5,6 +5,25 @@ import SwiftUI
 enum DocumentTool: Hashable {
     case read
     case editText
+    /// Place a Fill & Sign mark where the user taps.
+    case place(SignMark)
+}
+
+/// The marks Fill & Sign places.
+enum SignMark: Hashable {
+    case signature
+    case initials
+    case date
+    case check
+
+    var prompt: String {
+        switch self {
+        case .signature: "Tap where your signature goes"
+        case .initials: "Tap where your initials go"
+        case .date: "Tap where today's date goes"
+        case .check: "Tap where the checkmark goes"
+        }
+    }
 }
 
 /// An open PDF: pages with native scrolling and zoom, and the tools in a bottom bar.
@@ -17,6 +36,8 @@ struct DocumentView: View {
     @State private var query = ""
     @State private var searchToken = 0
     @State private var confirmingScan = false
+    /// The drawing pad, when the user is drawing a new signature or initials.
+    @State private var drawing: SignatureStore.Kind?
 
     var body: some View {
         PDFKitView(
@@ -26,7 +47,8 @@ struct DocumentView: View {
             tool: tool,
             query: searching ? query : "",
             searchToken: searchToken,
-            onTapParagraph: { page, paragraph in editing = (page, paragraph) }
+            onTapParagraph: { page, paragraph in editing = (page, paragraph) },
+            onPlace: { page, point in place(at: point, on: page) }
         )
         .ignoresSafeArea(edges: .bottom)
         .background(Color.black)
@@ -48,6 +70,11 @@ struct DocumentView: View {
             }
         }
         .sheet(isPresented: $showingPages) { OrganizeView(model: model) }
+        .sheet(isPresented: Binding(get: { drawing != nil }, set: { if !$0 { drawing = nil } })) {
+            if let kind = drawing {
+                SignaturePad(kind: kind) { tool = .place(kind == .signature ? .signature : .initials) }
+            }
+        }
         .alert("PDF Editor", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -87,12 +114,70 @@ struct DocumentView: View {
         }
     }
 
+    private var placing: Bool {
+        if case .place = tool { return true }
+        return false
+    }
+
+    /// Start placing `kind`: straight away if it was drawn before, else draw it first.
+    private func sign(_ kind: SignatureStore.Kind) {
+        if SignatureStore.exists(kind) {
+            tool = .place(kind == .signature ? .signature : .initials)
+        } else {
+            drawing = kind
+        }
+    }
+
+    /// Place the chosen mark at `point` (displayed page space) on `page`, then go back to reading.
+    private func place(at point: CGPoint, on page: Int) {
+        guard case .place(let mark) = tool else { return }
+        tool = .read
+        Task {
+            switch mark {
+            case .signature, .initials:
+                let kind: SignatureStore.Kind = mark == .signature ? .signature : .initials
+                // The engine places the drawing by its left edge, so centre it on the finger.
+                let at = CGPoint(x: max(0, point.x - SignatureStore.placedWidth(kind) / 2), y: point.y)
+                await model.fillSign(kind.rawValue, page: page, at: at, image: SignatureStore.url(kind))
+            case .date:
+                await model.fillSign("date", page: page, at: CGPoint(x: max(0, point.x - 28), y: max(0, point.y - 6)))
+            case .check:
+                await model.fillSign("check", page: page, at: point)
+            }
+        }
+    }
+
+    private var signMenu: some View {
+        Menu {
+            Button { sign(.signature) } label: { Label("Add Signature", systemImage: "signature") }
+            Button { sign(.initials) } label: { Label("Add Initials", systemImage: "character.cursor.ibeam") }
+            Button { tool = .place(.date) } label: { Label("Add Today's Date", systemImage: "calendar") }
+            Button { tool = .place(.check) } label: { Label("Add Checkmark", systemImage: "checkmark") }
+            Divider()
+            Button { drawing = .signature } label: { Label("Draw New Signature", systemImage: "pencil.tip") }
+            Button { drawing = .initials } label: { Label("Draw New Initials", systemImage: "pencil.tip") }
+            if SignatureStore.exists(.signature) || SignatureStore.exists(.initials) {
+                Button(role: .destructive) { SignatureStore.clear() } label: { Label("Forget Saved Signature", systemImage: "trash") }
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: "signature").font(.system(size: 19, weight: .medium))
+                Text("Sign").font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            .foregroundStyle(placing ? Theme.accent : Color.primary)
+        }
+        .disabled(!model.editable)
+    }
+
     private var bottomBar: some View {
         HStack(spacing: 0) {
             barButton("Edit Text", "character.cursor.ibeam", selected: tool == .editText) {
                 tool = tool == .editText ? .read : .editText
             }
             .disabled(!model.editable)
+            signMenu
             barButton("Search", "magnifyingglass", selected: searching) { searching.toggle() }
             barButton("Pages", "square.grid.2x2", selected: false) { showingPages = true }
                 .disabled(!model.editable)
@@ -135,7 +220,23 @@ struct DocumentView: View {
             .padding(.top, 8)
             .transition(.move(edge: .top).combined(with: .opacity))
         } else if tool == .editText {
-            Text("Tap a paragraph to edit it")
+            hint("Tap a paragraph to edit it")
+        } else if case .place(let mark) = tool {
+            HStack(spacing: 10) {
+                Text(mark.prompt)
+                Button("Cancel") { tool = .read }.fontWeight(.semibold)
+            }
+            .modifier(HintStyle())
+        }
+    }
+
+    private func hint(_ text: String) -> some View {
+        Text(text).modifier(HintStyle())
+    }
+
+    private struct HintStyle: ViewModifier {
+        func body(content: Content) -> some View {
+            content
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
@@ -157,6 +258,8 @@ struct PDFKitView: UIViewRepresentable {
     let query: String
     let searchToken: Int
     let onTapParagraph: (Int, Paragraph) -> Void
+    /// A tap while placing a Fill & Sign mark: the page (0-based) and the displayed-space point.
+    let onPlace: (Int, CGPoint) -> Void
 
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
@@ -230,11 +333,16 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         @objc func tapped(_ gesture: UITapGestureRecognizer) {
-            guard parent.tool == .editText, let view, let doc = view.document else { return }
+            guard let view, let doc = view.document else { return }
             let point = gesture.location(in: view)
             guard let page = view.page(for: point, nearest: true) else { return }
             let index = doc.index(for: page)
             let at = page.displayPoint(view.convert(point, to: page))
+            if case .place = parent.tool {
+                parent.onPlace(index, at)
+                return
+            }
+            guard parent.tool == .editText else { return }
             guard let paragraphs = parent.model.paragraphs[index] else { return }
             // The smallest box under the finger, with a little slack for small text.
             let hit = paragraphs

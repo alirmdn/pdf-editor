@@ -18,7 +18,7 @@ struct PaywallView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     feature("pencil.line", "Edit the text of any PDF, Arabic included")
                     feature("text.viewfinder", "Turn scans into editable, searchable text")
-                    feature("signature", "Fill, sign and annotate")
+                    feature("signature", "Sign, initial and date forms with your finger")
                     feature("square.on.square", "Merge, split and reorder pages")
                     feature("lock.shield", "Works offline: your files never leave your iPhone")
                 }
