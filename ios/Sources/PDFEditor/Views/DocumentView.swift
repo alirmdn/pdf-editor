@@ -76,8 +76,12 @@ struct DocumentView: View {
     @State private var drawing: SignatureStore.Kind?
     /// The saved signatures (or initials) to choose from.
     @State private var picking: SignatureStore.Kind?
-    /// Bumped by Place: the page view places the previewed signature where it is.
-    @State private var placeToken = 0
+    /// Lets the Place button reach the page view, which knows where the preview is.
+    @State private var bridge = PlacementBridge()
+    /// A short confirmation after a mark is placed ("Signature placed").
+    @State private var toast: String?
+    /// A mark is being written into the PDF (Place is disabled meanwhile).
+    @State private var placingNow = false
 
     var body: some View {
         PDFKitView(
@@ -87,7 +91,7 @@ struct DocumentView: View {
             tool: tool,
             query: searching ? query : "",
             searchToken: searchToken,
-            placeToken: placeToken,
+            bridge: bridge,
             onTapParagraph: { page, paragraph in editing = (page, paragraph) },
             onPlaceRect: { page, rect in place(in: rect, on: page) }
         )
@@ -96,7 +100,22 @@ struct DocumentView: View {
         .navigationTitle(model.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { topBar }
-        .safeAreaInset(edge: .bottom) { bottomBar }
+        .safeAreaInset(edge: .bottom) {
+            if case .place(let mark) = tool { placementBar(mark) } else { bottomBar }
+        }
+        .overlay(alignment: .bottom) {
+            if let toast {
+                Label(toast, systemImage: "checkmark.circle.fill")
+                    .font(.headline)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color.green.opacity(0.92), in: Capsule())
+                    .foregroundStyle(.white)
+                    .padding(.bottom, 110)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.3), value: toast)
         .overlay(alignment: .top) { statusBanner }
         .searchable(text: $query, isPresented: $searching, prompt: "Find in document")
         .onSubmit(of: .search) { searchToken += 1 }
@@ -176,18 +195,62 @@ struct DocumentView: View {
 
     /// Place the previewed mark in `rect` (displayed page space) on `page`.
     private func place(in rect: CGRect, on page: Int) {
-        guard case .place(let mark) = tool else { return }
+        guard case .place(let mark) = tool, !placingNow else { return }
+        // Placing ends here: one Place places one mark, and the tool goes back to reading.
         tool = .read
+        placingNow = true
         Task {
+            let placed: Bool
+            let what: String
             switch mark {
             case .image(let kind, let url):
-                await model.fillSign(kind.rawValue, page: page, at: rect.origin, image: url, rect: rect)
+                placed = await model.fillSign(kind.rawValue, page: page, at: rect.origin, image: url, rect: rect)
+                what = kind == .signature ? "Signature placed" : "Initials placed"
             case .date:
-                await model.fillSign("date", page: page, at: rect.origin, rect: rect)
+                placed = await model.fillSign("date", page: page, at: rect.origin, rect: rect)
+                what = "Date placed"
             case .check:
-                await model.fillSign("check", page: page, at: rect.origin, rect: rect)
+                placed = await model.fillSign("check", page: page, at: rect.origin, rect: rect)
+                what = "Checkmark placed"
+            }
+            placingNow = false
+            guard placed else { return }
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            toast = what
+            try? await Task.sleep(for: .seconds(2))
+            if toast == what { toast = nil }
+        }
+    }
+
+    /// While placing: what to do, and big Cancel and Place buttons in place of the tool bar.
+    private func placementBar(_ mark: SignMark) -> some View {
+        VStack(spacing: 12) {
+            Text(mark.prompt)
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Button {
+                    tool = .read
+                } label: {
+                    Text("Cancel").font(.headline).frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .buttonStyle(.bordered)
+                .tint(.gray)
+                Button {
+                    bridge.place()
+                } label: {
+                    Label("Place", systemImage: "checkmark").font(.headline).frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .disabled(placingNow)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background(.bar)
     }
 
     private var signMenu: some View {
@@ -258,16 +321,6 @@ struct DocumentView: View {
             .transition(.move(edge: .top).combined(with: .opacity))
         } else if tool == .editText {
             hint("Tap a paragraph to edit it")
-        } else if case .place(let mark) = tool {
-            VStack(spacing: 8) {
-                Text(mark.prompt).multilineTextAlignment(.center)
-                HStack(spacing: 18) {
-                    Button("Cancel") { tool = .read }
-                    Button("Place") { placeToken += 1 }.fontWeight(.bold)
-                }
-                .fontWeight(.semibold)
-            }
-            .modifier(HintStyle())
         }
     }
 
@@ -298,7 +351,8 @@ struct PDFKitView: UIViewRepresentable {
     let tool: DocumentTool
     let query: String
     let searchToken: Int
-    let placeToken: Int
+    /// The Place button's way in (it calls the coordinator directly, outside a view update).
+    let bridge: PlacementBridge
     let onTapParagraph: (Int, Paragraph) -> Void
     /// Place pressed with a signature previewed: the page (0-based) and its displayed-space box.
     let onPlaceRect: (Int, CGRect) -> Void
@@ -325,6 +379,7 @@ struct PDFKitView: UIViewRepresentable {
         )
         context.coordinator.view = view
         context.coordinator.container = container
+        bridge.coordinator = context.coordinator
         return container
     }
 
@@ -345,10 +400,6 @@ struct PDFKitView: UIViewRepresentable {
             c.search(query)
         }
         c.syncPreview()
-        if placeToken != c.placeToken {
-            c.placeToken = placeToken
-            c.commitPreview()
-        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -360,7 +411,6 @@ struct PDFKitView: UIViewRepresentable {
         weak var container: UIView?
         var revision = -1
         var searchToken = 0
-        var placeToken = 0
         /// The signature being placed, and which drawing it shows.
         private var preview: MarkPreview?
         private var previewMark: SignMark?
@@ -538,4 +588,12 @@ final class MarkPreview: UIView {
         }
         setNeedsLayout()
     }
+}
+
+/// Connects the Place button to the page view's coordinator, which knows where the preview sits.
+@MainActor
+final class PlacementBridge {
+    weak var coordinator: PDFKitView.Coordinator?
+
+    func place() { coordinator?.commitPreview() }
 }
