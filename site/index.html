@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDF Editor for iPhone — edit, sign and scan PDFs in Arabic and English</title>
+<meta name="description" content="Edit the real text of any PDF in Arabic and English, sign with your finger, and turn scans into editable text. Works offline: your files never leave your iPhone.">
+<meta name="theme-color" content="#0c0809">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:title" content="PDF Editor for iPhone">
+<meta property="og:description" content="Edit the real text of any PDF in Arabic and English, sign, and scan. Private by design.">
+<meta property="og:image" content="https://pdfeditor.alirmdn.com/img/og.png">
+<meta property="og:url" content="https://pdfeditor.alirmdn.com/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a dark desk under red lamplight. The hero pairs the promise with two real phones and a
+   signature that writes itself; features alternate text and screens; an Arabic band proves the
+   right-to-left claim in the type itself; privacy, price and questions close it out. */
+:root {
+  --bg: #0c0809;
+  --panel: #161011;
+  --panel-2: #1e1517;
+  --line: #2c2022;
+  --ink: #f6eeee;
+  --muted: #b3a4a6;
+  --red: #dc3d43;
+  --red-hi: #ff7d82;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --arabic: "IBM Plex Sans Arabic", "Geeza Pro", "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 17px/1.6 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+:lang(ar) body, [lang="ar"] body { font-family: var(--arabic); }
+html[lang="ar"] { --display: var(--arabic); --body: var(--arabic); }
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+.wrap {
+  max-width: 1160px; margin: 0 auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+.label { font: 500 12px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--red-hi); }
+html[lang="ar"] .label { font-family: var(--arabic); letter-spacing: 0; font-size: 14px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+p { margin: 0; }
+
+/* Nav */
+nav { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 17px var(--display); }
+.brand img { width: 32px; height: 32px; border-radius: 8px; }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.lang { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 7px 14px; font: 600 14px var(--body); cursor: pointer; }
+.lang:hover { border-color: var(--red); }
+.cta { display: inline-flex; align-items: center; gap: 10px; background: var(--red); color: #fff; text-decoration: none; border-radius: 999px; padding: 12px 22px; font: 600 16px var(--body); border: 0; }
+.cta.small { padding: 8px 16px; font-size: 14px; }
+.cta svg { width: 18px; height: 18px; }
+.cta[aria-disabled="true"] { cursor: default; }
+:focus-visible { outline: 2px solid var(--red-hi); outline-offset: 3px; }
+
+/* Hero */
+.hero { position: relative; overflow: hidden; padding-block: 72px 40px; }
+.hero::before { content: ""; position: absolute; inset: -30% -10% auto; height: 900px; background: radial-gradient(closest-side, rgba(220,61,67,0.42), rgba(220,61,67,0) 70%); pointer-events: none; }
+.hero .wrap { position: relative; display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; }
+.hero h1 { font-size: clamp(42px, 6.4vw, 82px); line-height: 0.98; letter-spacing: -0.03em; font-weight: 800; }
+html[lang="ar"] .hero h1 { letter-spacing: 0; line-height: 1.25; font-weight: 700; }
+.hero h1 em { font-style: normal; color: var(--red-hi); }
+.signline { width: min(360px, 80%); height: 70px; margin: 18px 0 6px; color: var(--red-hi); }
+html[dir="rtl"] .signline { transform: scaleX(-1); }
+.signline path { fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1200; stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .signline path { animation: write 2.4s cubic-bezier(.6,.1,.2,1) .3s both; }
+  @keyframes write { from { stroke-dashoffset: 1200; } to { stroke-dashoffset: 0; } }
+}
+.hero .lede { font-size: 20px; color: var(--muted); max-width: 34ch; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; margin-top: 28px; }
+.price-note { color: var(--muted); font-size: 15px; }
+.phones { position: relative; height: 640px; }
+.phone { position: absolute; width: 270px; border-radius: 46px; padding: 9px; background: #1b1b1d; box-shadow: 0 0 0 1.5px #3a3a3f inset, 0 40px 80px rgba(0,0,0,0.6); }
+.phone img { border-radius: 38px; width: 100%; height: auto; aspect-ratio: 1320 / 2868; }
+.phone.a { inset-inline-start: 6%; top: 10px; transform: rotate(-6deg); z-index: 2; }
+.phone.b { inset-inline-start: 46%; top: 70px; transform: rotate(5deg); }
+
+/* Features */
+.features { display: grid; gap: 96px; padding-block: 80px; }
+.feature { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+.feature:nth-child(even) .shot { order: 2; }
+.feature .copy { display: grid; gap: 14px; max-width: 46ch; }
+.feature h2 { font-size: clamp(30px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -0.02em; }
+html[lang="ar"] .feature h2 { letter-spacing: 0; line-height: 1.35; }
+.feature p { color: var(--muted); font-size: 18px; }
+.feature ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.feature li { display: flex; gap: 10px; align-items: baseline; }
+.feature li::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--red); transform: translateY(-2px); }
+.feature .shot { display: flex; justify-content: center; position: relative; }
+.feature .shot::before { content: ""; position: absolute; width: 380px; height: 380px; top: 15%; border-radius: 50%; background: radial-gradient(closest-side, rgba(220,61,67,0.28), transparent); }
+.feature .phone { position: relative; width: 290px; inset: auto; }
+
+/* Arabic band */
+.arabic { border-block: 1px solid var(--line); background: linear-gradient(180deg, var(--panel), var(--bg)); padding-block: 80px; }
+.arabic .wrap { display: grid; gap: 20px; }
+.arabic blockquote { margin: 0; font: 700 clamp(34px, 5.4vw, 68px)/1.45 var(--arabic); direction: rtl; text-align: right; color: var(--ink); }
+.arabic blockquote mark { background: none; color: var(--red-hi); }
+.arabic .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.arabic .why div { border-top: 1px solid var(--line); padding-top: 14px; color: var(--muted); }
+.arabic .why b { display: block; color: var(--ink); font: 600 17px var(--body); margin-bottom: 4px; }
+
+/* Privacy */
+.privacy { padding-block: 96px; display: grid; gap: 32px; }
+.privacy h2, .pricing h2, .faq h2 { font-size: clamp(32px, 4vw, 52px); letter-spacing: -0.02em; }
+html[lang="ar"] .privacy h2, html[lang="ar"] .pricing h2, html[lang="ar"] .faq h2 { letter-spacing: 0; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: grid; gap: 8px; align-content: start; }
+.card svg { width: 26px; height: 26px; color: var(--red-hi); }
+.card h3 { font-size: 20px; }
+.card p { color: var(--muted); font-size: 16px; }
+
+/* Pricing */
+.pricing { padding-block: 40px 96px; display: grid; gap: 28px; justify-items: center; text-align: center; }
+.plan { width: min(520px, 100%); background: var(--panel-2); border: 1px solid #4a2a2d; border-radius: 28px; padding: 34px 30px; display: grid; gap: 16px; box-shadow: 0 30px 80px rgba(220,61,67,0.14); }
+.plan .amount { font: 800 64px/1 var(--display); letter-spacing: -0.03em; }
+.plan .amount small { font: 500 18px var(--body); color: var(--muted); letter-spacing: 0; }
+.plan ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; text-align: start; }
+.plan li { display: flex; gap: 10px; }
+.plan li svg { flex: none; width: 20px; height: 20px; color: var(--red-hi); margin-top: 3px; }
+.plan .fine { font-size: 13px; color: var(--muted); }
+
+/* FAQ */
+.faq { padding-block: 0 96px; display: grid; gap: 22px; }
+.faq details { border-bottom: 1px solid var(--line); padding: 18px 0; }
+.faq summary { cursor: pointer; font: 600 19px var(--body); list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::after { content: "+"; color: var(--red-hi); font-size: 24px; line-height: 1; }
+.faq details[open] summary::after { content: "–"; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq details p { color: var(--muted); margin-top: 10px; max-width: 70ch; }
+
+footer { border-top: 1px solid var(--line); padding-block: 36px calc(36px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: space-between; align-items: center; }
+footer nav { position: static; background: none; border: 0; backdrop-filter: none; padding: 0; display: flex; flex-wrap: wrap; gap: 18px; }
+
+@media (max-width: 860px) {
+  .hero { padding-block: 44px 10px; }
+  .hero .wrap { grid-template-columns: 1fr; }
+  .phones { height: 520px; }
+  .phone { width: 220px; }
+  .phone.a { inset-inline-start: 4%; }
+  .phone.b { inset-inline-start: 42%; top: 50px; }
+  .feature { grid-template-columns: 1fr; gap: 30px; }
+  .feature:nth-child(even) .shot { order: 0; }
+  .feature .phone { width: 250px; }
+  .features { gap: 72px; padding-block: 56px; }
+  .nav-right .cta { display: none; }
+}
+</style>
+</head>
+<body>
+<!-- The App Store link: when the app is live, set APP_STORE_URL below and the buttons turn into links. -->
+<nav aria-label="Main">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="img/icon-256.png" alt="" width="32" height="32"><span data-i18n="name">PDF Editor</span></a>
+    <div class="nav-right">
+      <button class="lang" id="lang" type="button" aria-label="العربية">العربية</button>
+      <a class="cta small store" href="#pricing" data-i18n="soon">Coming soon to the App Store</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <span class="label" data-i18n="eyebrow">PDF editor for iPhone</span>
+        <h1 data-i18n-html="h1">Edit the real text of any PDF. <em>In Arabic too.</em></h1>
+        <svg class="signline" viewBox="0 0 360 70" aria-hidden="true"><path d="M6 52c18-4 30-30 44-34 12-3 6 30-4 34-8 3 4-26 22-26 14 0 10 24 22 22 14-3 20-34 34-30 10 3-2 28 8 30 12 2 22-26 36-24 12 2 2 22 14 22 18 0 34-18 54-18 18 0 30 10 58 8 20-2 40-8 60-10"/></svg>
+        <p class="lede" data-i18n="lede">Change the words in contracts, forms and letters, sign with your finger, and turn scans into text you can edit. Everything happens on your iPhone.</p>
+        <div class="hero-actions">
+          <a class="cta store" href="#pricing"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.2 0 2-1.1 2.8-2.3.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-1-2.5-3.8zM14.1 5.8c.6-.8 1.1-1.8 1-2.8-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.7-1 2.7 1 .1 2-.5 2.7-1.3z"/></svg><span data-i18n="soon">Coming soon to the App Store</span></a>
+          <span class="price-note" data-i18n="trial">Free for 7 days, then $9.99 a month</span>
+        </div>
+      </div>
+      <div class="phones" aria-hidden="true">
+        <div class="phone a"><img src="img/edit-720.webp" srcset="img/edit-420.webp 420w, img/edit-720.webp 720w" sizes="270px" alt=""></div>
+        <div class="phone b"><img src="img/sign-720.webp" srcset="img/sign-420.webp 420w, img/sign-720.webp 720w" sizes="270px" alt=""></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap features">
+    <article class="feature">
+      <div class="shot"><div class="phone"><img loading="lazy" src="img/edit-720.webp" srcset="img/edit-420.webp 420w, img/edit-720.webp 720w" sizes="290px" alt="A PDF in Edit Text mode, each paragraph outlined in red" data-i18n-alt="alt-edit"></div></div>
+      <div class="copy">
+        <span class="label" data-i18n="f1-l">Edit text</span>
+        <h2 data-i18n="f1-h">Change the words, keep the page</h2>
+        <p data-i18n="f1-p">Tap Edit Text and every paragraph gets a frame. Tap one, type, and it is redrawn in place with its size and colour.</p>
+        <ul>
+          <li data-i18n="f1-1">Arabic and English, even mixed in one line</li>
+          <li data-i18n="f1-2">Numbers, dates and references stay in their sentence</li>
+          <li data-i18n="f1-3">Undo and redo every change</li>
+        </ul>
+      </div>
+    </article>
+    <article class="feature">
+      <div class="shot"><div class="phone"><img loading="lazy" src="img/sign-720.webp" srcset="img/sign-420.webp 420w, img/sign-720.webp 720w" sizes="290px" alt="A signature being dragged into place on a page, with Cancel and Place buttons" data-i18n-alt="alt-sign"></div></div>
+      <div class="copy">
+        <span class="label" data-i18n="f2-l">Sign</span>
+        <h2 data-i18n="f2-h">Sign in seconds, exactly where it goes</h2>
+        <p data-i18n="f2-p">Draw your signature once. Next time, pick it, drag it onto the line, pinch to resize, and tap Place.</p>
+        <ul>
+          <li data-i18n="f2-1">Keep up to three signatures and three initials</li>
+          <li data-i18n="f2-2">Add today's date and checkmarks the same way</li>
+          <li data-i18n="f2-3">Saved on your iPhone only</li>
+        </ul>
+      </div>
+    </article>
+    <article class="feature">
+      <div class="shot"><div class="phone"><img loading="lazy" src="img/read-720.webp" srcset="img/read-420.webp 420w, img/read-720.webp 720w" sizes="290px" alt="A PDF open in PDF Editor, ready to search and edit" data-i18n-alt="alt-scan"></div></div>
+      <div class="copy">
+        <span class="label" data-i18n="f3-l">Scans</span>
+        <h2 data-i18n="f3-h">Scans become text you can edit</h2>
+        <p data-i18n="f3-p">Photograph a paper document or open a scanned PDF. PDF Editor reads the Arabic and English in it, so you can search, copy and change it.</p>
+        <ul>
+          <li data-i18n="f3-1">Text recognition runs on the iPhone itself</li>
+          <li data-i18n="f3-2">Stamps and handwritten signatures are left alone</li>
+          <li data-i18n="f3-3">Scan with the camera into a new PDF</li>
+        </ul>
+      </div>
+    </article>
+    <article class="feature">
+      <div class="shot"><div class="phone"><img loading="lazy" src="img/pages-720.webp" srcset="img/pages-420.webp 420w, img/pages-720.webp 720w" sizes="290px" alt="The Pages screen with options to rotate, move or delete a page" data-i18n-alt="alt-pages"></div></div>
+      <div class="copy">
+        <span class="label" data-i18n="f4-l">Pages</span>
+        <h2 data-i18n="f4-h">Put pages in order</h2>
+        <p data-i18n="f4-p">Tap a page to rotate it, move it earlier or later, or delete it. Search finds any word across the document.</p>
+      </div>
+    </article>
+  </div>
+
+  <section class="arabic" aria-labelledby="ar-h">
+    <div class="wrap">
+      <span class="label" id="ar-h" data-i18n="ar-l">Arabic, done properly</span>
+      <blockquote lang="ar">عدّل العقد رقم <mark>2025/7525</mark> بتاريخ <mark>31-12-2025</mark> دون أن يتغيّر شكل الصفحة.</blockquote>
+      <div class="why">
+        <div><b data-i18n="ar1-h">Right to left</b><span data-i18n="ar1-p">Lines run from the right and letters join the way they should.</span></div>
+        <div><b data-i18n="ar2-h">Numbers in place</b><span data-i18n="ar2-p">Dates and reference numbers keep their order inside Arabic sentences.</span></div>
+        <div><b data-i18n="ar3-h">Whole paragraphs</b><span data-i18n="ar3-p">Scanned Arabic opens as paragraphs you edit at once, not word by word.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap privacy" aria-labelledby="pv-h">
+    <span class="label" data-i18n="pv-l">Privacy</span>
+    <h2 id="pv-h" data-i18n="pv-h">Your documents stay on your iPhone</h2>
+    <div class="grid4">
+      <div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 4.2-2.7M10.7 5.1A15 15 0 0 1 22 8.8M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2.3-1.6M12 20h.01"/></svg><h3 data-i18n="pv1-h">Works offline</h3><p data-i18n="pv1-p">Editing, signing and text recognition need no internet.</p></div>
+      <div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><h3 data-i18n="pv2-h">Nothing uploaded</h3><p data-i18n="pv2-p">Your PDFs are never sent to a server. Not ours, not anyone's.</p></div>
+      <div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/><path d="M3 3l18 18"/></svg><h3 data-i18n="pv3-h">No account</h3><p data-i18n="pv3-p">No sign-up, no ads, no tracking. The App Store shows "Data Not Collected".</p></div>
+      <div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg><h3 data-i18n="pv4-h">Delete everything</h3><p data-i18n="pv4-p">One button in Settings removes all your PDFs and saved signatures.</p></div>
+    </div>
+  </section>
+
+  <section class="wrap pricing" id="pricing" aria-labelledby="pr-h">
+    <span class="label" data-i18n="pr-l">Price</span>
+    <h2 id="pr-h" data-i18n="pr-h">One plan, everything included</h2>
+    <div class="plan">
+      <span class="label" data-i18n="pr-name">PDF Editor Pro</span>
+      <div class="amount">$9.99 <small data-i18n="pr-per">a month</small></div>
+      <p data-i18n="pr-trial">Start with a free 7-day trial. Cancel any time before it ends and you pay nothing.</p>
+      <ul>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg><span data-i18n="pr1">Edit text in Arabic and English</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg><span data-i18n="pr2">Signatures, initials, dates and checkmarks</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg><span data-i18n="pr3">Scans to editable text</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg><span data-i18n="pr4">Page tools and search</span></li>
+      </ul>
+      <a class="cta store" href="#pricing" style="justify-content:center" data-i18n="soon">Coming soon to the App Store</a>
+      <p class="fine" data-i18n="pr-fine">Payment is charged to your Apple ID when the trial ends. The subscription renews monthly unless cancelled at least 24 hours before the end of the current period. Manage it in Settings ▸ your name ▸ Subscriptions. Prices may vary by country.</p>
+    </div>
+  </section>
+
+  <section class="wrap faq" aria-labelledby="faq-h">
+    <h2 id="faq-h" data-i18n="faq-h">Questions</h2>
+    <div>
+      <details><summary data-i18n="q1">Which iPhones does it work on?</summary><p data-i18n="a1">Any iPhone with iOS 17 or later. Reading Arabic in scans uses Apple's text recognition, which needs iOS 18 or later.</p></details>
+      <details><summary data-i18n="q2">Can I edit any PDF?</summary><p data-i18n="a2">PDFs with real text can be edited directly. Scanned pages and photos are first read into text, then edited the same way. Password-protected PDFs open with their password, within what their owner allows.</p></details>
+      <details><summary data-i18n="q3">Is a signature in PDF Editor legally binding?</summary><p data-i18n="a3">It places an image of your handwritten signature on the page, like signing a printout. Whether that is enough depends on the document and where you are; ask the person who sent it if you are unsure.</p></details>
+      <details><summary data-i18n="q4">How do I cancel?</summary><p data-i18n="a4">Open Settings on your iPhone, tap your name, then Subscriptions, and choose PDF Editor Pro. You keep access until the end of the period you paid for.</p></details>
+      <details><summary data-i18n="q5">Where do I get help?</summary><p data-i18n-html="a5">Email <a href="mailto:my.aliramadan@gmail.com">my.aliramadan@gmail.com</a> or visit the <a href="https://aliramadann.github.io/pdf-editor-support/">support page</a>.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Ali Ramadan Ali Alwerfalli</span>
+    <nav aria-label="Legal">
+      <a href="https://aliramadann.github.io/pdf-editor-support/privacy.html" data-i18n="privacy">Privacy Policy</a>
+      <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" data-i18n="terms">Terms of Use</a>
+      <a href="https://aliramadann.github.io/pdf-editor-support/" data-i18n="support">Support</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+// Set this to the app's App Store link once it is live; the "Coming soon" buttons become download links.
+const APP_STORE_URL = "";
+
+const AR = {
+  "name": "PDF Editor",
+  "soon": "قريباً على App Store",
+  "eyebrow": "محرر PDF لجهاز iPhone",
+  "h1": "عدّل النص الحقيقي في أي ملف PDF. <em>وبالعربية أيضاً.</em>",
+  "lede": "غيّر كلمات العقود والنماذج والخطابات، ووقّع بإصبعك، وحوّل المستندات الممسوحة إلى نص قابل للتعديل. كل ذلك على جهاز iPhone.",
+  "trial": "مجاناً لمدة 7 أيام، ثم 9.99 دولار شهرياً",
+  "f1-l": "تعديل النص", "f1-h": "غيّر الكلمات وحافظ على الصفحة",
+  "f1-p": "المس «تعديل النص» فيظهر إطار حول كل فقرة. المس أي فقرة واكتب، فتُعاد كتابتها في مكانها بحجمها ولونها.",
+  "f1-1": "العربية والإنجليزية، حتى في السطر نفسه", "f1-2": "تبقى الأرقام والتواريخ والمراجع في مكانها داخل الجملة", "f1-3": "تراجع وإعادة لكل تعديل",
+  "f2-l": "التوقيع", "f2-h": "وقّع في ثوانٍ وفي المكان الصحيح",
+  "f2-p": "ارسم توقيعك مرة واحدة. في المرة التالية اختره واسحبه إلى السطر وكبّره أو صغّره ثم المس «وضع».",
+  "f2-1": "احتفظ بثلاثة تواقيع وثلاثة أحرف أولى", "f2-2": "أضف تاريخ اليوم وعلامات الاختيار بالطريقة نفسها", "f2-3": "محفوظة على جهازك فقط",
+  "f3-l": "المسح الضوئي", "f3-h": "المستندات الممسوحة تصبح نصاً قابلاً للتعديل",
+  "f3-p": "صوّر مستنداً ورقياً أو افتح ملف PDF ممسوحاً، فيقرأ التطبيق ما فيه من عربية وإنجليزية لتبحث فيه وتنسخه وتعدّله.",
+  "f3-1": "يعمل التعرّف على النص على الجهاز نفسه", "f3-2": "لا يتأثر الختم والتوقيع بخط اليد", "f3-3": "امسح بالكاميرا إلى ملف PDF جديد",
+  "f4-l": "الصفحات", "f4-h": "رتّب الصفحات",
+  "f4-p": "المس أي صفحة لتدويرها أو تقديمها أو تأخيرها أو حذفها، وابحث عن أي كلمة في المستند كله.",
+  "ar-l": "العربية كما يجب",
+  "ar1-h": "من اليمين إلى اليسار", "ar1-p": "تبدأ الأسطر من اليمين وتتصل الحروف كما ينبغي.",
+  "ar2-h": "الأرقام في مكانها", "ar2-p": "تحافظ التواريخ والأرقام المرجعية على ترتيبها داخل الجمل العربية.",
+  "ar3-h": "فقرات كاملة", "ar3-p": "يُفتح النص العربي الممسوح فقراتٍ تعدّلها دفعة واحدة، لا كلمة كلمة.",
+  "pv-l": "الخصوصية", "pv-h": "مستنداتك تبقى على جهازك",
+  "pv1-h": "يعمل دون إنترنت", "pv1-p": "التعديل والتوقيع والتعرّف على النص لا تحتاج إلى اتصال.",
+  "pv2-h": "لا شيء يُرفع", "pv2-p": "لا تُرسل ملفاتك إلى أي خادم، لا خادمنا ولا غيره.",
+  "pv3-h": "بلا حساب", "pv3-p": "بلا تسجيل ولا إعلانات ولا تتبع. يعرض App Store «لا تُجمع بيانات».",
+  "pv4-h": "احذف كل شيء", "pv4-p": "زر واحد في الإعدادات يحذف كل ملفاتك وتواقيعك المحفوظة.",
+  "pr-l": "السعر", "pr-h": "خطة واحدة تشمل كل شيء", "pr-name": "PDF Editor Pro", "pr-per": "شهرياً",
+  "pr-trial": "ابدأ بتجربة مجانية لمدة 7 أيام. ألغِ في أي وقت قبل انتهائها ولن تدفع شيئاً.",
+  "pr1": "تعديل النص بالعربية والإنجليزية", "pr2": "التواقيع والأحرف الأولى والتواريخ وعلامات الاختيار", "pr3": "تحويل المستندات الممسوحة إلى نص", "pr4": "أدوات الصفحات والبحث",
+  "pr-fine": "يُخصم المبلغ من حساب Apple ID عند انتهاء التجربة، ويتجدد الاشتراك شهرياً ما لم يُلغَ قبل 24 ساعة على الأقل من نهاية الفترة الحالية. يمكنك إدارته من الإعدادات ▸ اسمك ▸ الاشتراكات. قد تختلف الأسعار حسب البلد.",
+  "faq-h": "أسئلة شائعة",
+  "q1": "على أي أجهزة iPhone يعمل؟", "a1": "على أي iPhone بنظام iOS 17 أو أحدث. قراءة العربية في المستندات الممسوحة تستخدم تقنية Apple للتعرّف على النص وتتطلب iOS 18 أو أحدث.",
+  "q2": "هل يمكنني تعديل أي ملف PDF؟", "a2": "تُعدَّل الملفات التي تحتوي على نص حقيقي مباشرة. أما الصفحات الممسوحة والصور فتُقرأ أولاً إلى نص ثم تُعدَّل بالطريقة نفسها. وتُفتح الملفات المحمية بكلمة مرورها ضمن ما يسمح به مالكها.",
+  "q3": "هل التوقيع في التطبيق ملزم قانونياً؟", "a3": "يضع التطبيق صورة توقيعك بخط يدك على الصفحة، كما لو وقّعت نسخة مطبوعة. ويعتمد كونه كافياً على نوع المستند ومكانك؛ اسأل الجهة التي أرسلته إن لم تكن متأكداً.",
+  "q4": "كيف ألغي الاشتراك؟", "a4": "افتح الإعدادات في جهازك، والمس اسمك ثم الاشتراكات، واختر PDF Editor Pro. يبقى لك الوصول حتى نهاية الفترة المدفوعة.",
+  "q5": "أين أجد المساعدة؟", "a5": "راسلنا على <a href=\"mailto:my.aliramadan@gmail.com\">my.aliramadan@gmail.com</a> أو زر <a href=\"https://aliramadann.github.io/pdf-editor-support/\">صفحة الدعم</a>.",
+  "privacy": "سياسة الخصوصية", "terms": "شروط الاستخدام", "support": "الدعم",
+  "alt-edit": "ملف PDF في وضع تعديل النص وكل فقرة داخل إطار أحمر",
+  "alt-sign": "توقيع يُسحب إلى مكانه على الصفحة مع زرّي الإلغاء والوضع",
+  "alt-scan": "ملف PDF مفتوح في التطبيق جاهز للبحث والتعديل",
+  "alt-pages": "شاشة الصفحات مع خيارات التدوير والنقل والحذف",
+};
+const EN = {};
+document.querySelectorAll("[data-i18n]").forEach((el) => (EN[el.dataset.i18n] = el.textContent));
+document.querySelectorAll("[data-i18n-html]").forEach((el) => (EN[el.dataset.i18nHtml] = el.innerHTML));
+document.querySelectorAll("[data-i18n-alt]").forEach((el) => (EN[el.dataset.i18nAlt] = el.alt));
+
+function apply(lang) {
+  const t = lang === "ar" ? AR : EN;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  document.querySelectorAll("[data-i18n]").forEach((el) => { const v = t[el.dataset.i18n]; if (v) el.textContent = v; });
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => { const v = t[el.dataset.i18nHtml]; if (v) el.innerHTML = v; });
+  document.querySelectorAll("[data-i18n-alt]").forEach((el) => { const v = t[el.dataset.i18nAlt]; if (v) el.alt = v; });
+  const btn = document.getElementById("lang");
+  btn.textContent = lang === "ar" ? "English" : "العربية";
+  btn.setAttribute("aria-label", btn.textContent);
+  try { localStorage.setItem("lang", lang); } catch {}
+}
+let saved = null;
+try { saved = localStorage.getItem("lang"); } catch {}
+const start = saved || ((navigator.language || "").toLowerCase().startsWith("ar") ? "ar" : "en");
+if (start === "ar") apply("ar");
+document.getElementById("lang").addEventListener("click", () => apply(document.documentElement.lang === "ar" ? "en" : "ar"));
+
+if (APP_STORE_URL) {
+  document.querySelectorAll(".store").forEach((a) => {
+    a.href = APP_STORE_URL;
+    const label = a.querySelector("[data-i18n='soon']") || a;
+    EN.soon = "Download on the App Store"; AR.soon = "حمّله من App Store";
+    label.textContent = document.documentElement.lang === "ar" ? AR.soon : EN.soon;
+  });
+}
+</script>
+</body>
+</html>
